@@ -21,6 +21,9 @@ use App\Models\History;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\Calculation\MathTrig\Round;
 use App\Traits\ImageResizer;
+use App\Services\AgreementEntitlementService;
+use App\Services\AgreementOtpModeService;
+use App\Services\PartyVerificationException;
 use Exception;
 use Illuminate\Support\Facades\DB;
 
@@ -447,10 +450,72 @@ $amount_in_word = ucfirst($fmt->format(1000));
                 'message' => 'party  two not found'
             ]);
         }
-         
 
-        // Add aggriment Details in aggriment table 
+        // ---- Caller, OTP tier and plan entitlement -------------------------
+        //
+        // This is the older twin of PhpWordController@create_aggriment and is
+        // still routed, so it carries the same gates — guarding only the /v1
+        // endpoint would leave this one as a way around both of them.
+
+        $caller = $request->user();
+        $callerId = (int) $caller->id;
+
+        if ($callerId !== (int) $party_1 && $callerId !== (int) $party_2) {
+            throw new PartyVerificationException(
+                403,
+                'NOT_A_PARTY',
+                'You can only create an agreement you are a party to.',
+            );
+        }
+
+        $otpModeService = app(AgreementOtpModeService::class);
+        $otpMode = $request->input('otp_mode');
+
+        if ($otpMode !== null && !in_array($otpMode, AgreementOtpModeService::modes(), true)) {
+            throw new PartyVerificationException(422, 'INVALID_OTP_MODE', 'Unknown OTP mode.');
+        }
+
+        $requiredParties = $otpModeService->requiredForCreation(
+            $person1,
+            $person2,
+            $request->input('guarantor'),
+            $request->input('guarantor_number'),
+        );
+
+        $otpModeService->assertVerifiedForCreation($callerId, $otpMode, $requiredParties);
+
+        $entitlements = app(AgreementEntitlementService::class);
+        $entitlement = $entitlements->getEntitlement($callerId);
+
+        if ($entitlement === null) {
+            throw new PartyVerificationException(
+                402,
+                'SUBSCRIPTION_REQUIRED',
+                'Your plan does not cover another agreement. Please renew to continue.',
+            );
+        }
+
+        $invoiceId = $request->input('invoice_id');
+
+        if (!empty($invoiceId)) {
+            $ownsInvoice = DB::table('subscription_invoices')
+                ->where('id', $invoiceId)
+                ->where('customer_id', $callerId)
+                ->exists();
+
+            if (!$ownsInvoice) {
+                throw new PartyVerificationException(
+                    403,
+                    'INVOICE_NOT_YOURS',
+                    'That invoice does not belong to this account.',
+                );
+            }
+        }
+        // --------------------------------------------------------------------
+
+        // Add aggriment Details in aggriment table
         $aggriment = new Aggriment;
+        $aggriment->otp_mode = $otpMode;
         $aggriment->party_1_id = $party_1;
         $aggriment->party_1_signature = $request->party_1_signature;
         $aggriment->party_2_id = $party_2;
@@ -480,8 +545,23 @@ $amount_in_word = ucfirst($fmt->format(1000));
 
         $aggriment->party_1_image = $person_one;
         $aggriment->party_2_image = $person_two;
-        $aggriment->save();
-        // Add aggriment Details in aggriment table 
+
+        // Insert and plan decrement in one transaction — see the twin in
+        // PhpWordController for why the row lock matters here.
+        DB::transaction(function () use ($aggriment, $entitlement, $entitlements) {
+            $aggriment->save();
+
+            if (!$entitlements->consume($entitlement['subscription_id'])) {
+                throw new PartyVerificationException(
+                    402,
+                    'SUBSCRIPTION_EXHAUSTED',
+                    'Your plan ran out while this agreement was being created. Please renew and try again.',
+                );
+            }
+        });
+
+        $otpModeService->snapshotForAgreement($aggriment, $callerId, $requiredParties);
+        // Add aggriment Details in aggriment table
 
 
 
@@ -691,6 +771,10 @@ $guarantor_number_array = explode(',',$guarantor_number);
             'aggriment_id' =>$aggriment->id,
             'filename' => 'money_agreement.pdf',
         ]);
+        } catch (PartyVerificationException $e) {
+            // Keeps its own status code instead of being flattened into a 500
+            // by the generic handler below.
+            return $e->toResponse();
         } catch (Exception $e) {
             // dd($e);
 

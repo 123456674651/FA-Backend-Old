@@ -32,6 +32,10 @@ use NumberFormatter;
 use App\Models\DealCategory;
 use App\Models\Language;
 use App\Models\Feed;
+use App\Services\AgreementEntitlementService;
+use App\Services\AgreementOtpModeService;
+use App\Services\PartyVerificationException;
+use App\Support\ApiResponse;
 //use App\Models\UserSubscription;
 
 
@@ -229,6 +233,10 @@ public function amountToWords($number)
                 'start_date' => 'nullable|date',
                 //'end_date'   => 'nullable|date|after:start_date',
 
+                // Which verification tier this agreement is being created under.
+                // Nullable so an older caller still works; null is treated the
+                // same as without_otp by the gate below.
+                'otp_mode'   => 'nullable|in:' . implode(',', AgreementOtpModeService::modes()),
 
             ]);
 
@@ -265,9 +273,73 @@ public function amountToWords($number)
 					'message' => 'party  two not found'
 				]);
 			}
-          
-			// Add aggriment Details in aggriment table 
+
+			// ---- Caller, OTP tier and plan entitlement -----------------------
+			//
+			// Everything below derives from the session token rather than the
+			// request body. Before this, any caller could name any two customer
+			// ids and create an agreement between strangers, with no plan.
+
+			$caller = $request->user();
+			$callerId = (int) $caller->id;
+
+			if ($callerId !== (int) $party_1 && $callerId !== (int) $party_2) {
+				throw new PartyVerificationException(
+					403,
+					'NOT_A_PARTY',
+					'You can only create an agreement you are a party to.',
+				);
+			}
+
+			$otpModeService = app(AgreementOtpModeService::class);
+			$otpMode = $request->input('otp_mode');
+
+			$requiredParties = $otpModeService->requiredForCreation(
+				$person1,
+				$person2,
+				$request->input('guarantor'),
+				$request->input('guarantor_number'),
+			);
+
+			// Under with_otp every party and guarantor must already have
+			// confirmed their number through Firebase. Throws with the list of
+			// who is still outstanding.
+			$otpModeService->assertVerifiedForCreation($callerId, $otpMode, $requiredParties);
+
+			$entitlements = app(AgreementEntitlementService::class);
+			$entitlement = $entitlements->getEntitlement($callerId);
+
+			if ($entitlement === null) {
+				throw new PartyVerificationException(
+					402,
+					'SUBSCRIPTION_REQUIRED',
+					'Your plan does not cover another agreement. Please renew to continue.',
+				);
+			}
+
+			// An invoice may only be attached if it belongs to the caller —
+			// it used to be taken from the request body and trusted.
+			$invoiceId = $request->input('invoice_id');
+
+			if (!empty($invoiceId)) {
+				$ownsInvoice = DB::table('subscription_invoices')
+					->where('id', $invoiceId)
+					->where('customer_id', $callerId)
+					->exists();
+
+				if (!$ownsInvoice) {
+					throw new PartyVerificationException(
+						403,
+						'INVOICE_NOT_YOURS',
+						'That invoice does not belong to this account.',
+					);
+				}
+			}
+			// ------------------------------------------------------------------
+
+			// Add aggriment Details in aggriment table
 			$aggriment = new Aggriment;
+			$aggriment->otp_mode = $otpMode;
 			$aggriment->party_1_id = $party_1;
 			$aggriment->party_1_signature = $request->party_1_signature;
 			$aggriment->party_2_id = $party_2;
@@ -333,12 +405,29 @@ public function amountToWords($number)
 			$aggriment->party_2_age = $request->party_2_age;
 			$aggriment->party_1_business = $request->party_1_business;
 			$aggriment->party_2_business = $request->party_2_business;
-			$aggriment->save();
-			// Add aggriment Details in aggriment table 
-          
-        
-          
-          
+			// The insert and the plan decrement share one transaction, so two
+			// agreements racing on the last remaining credit cannot both
+			// succeed — without it, both read "1 left" and both write "0".
+			DB::transaction(function () use ($aggriment, $entitlement, $entitlements) {
+				$aggriment->save();
+
+				if (!$entitlements->consume($entitlement['subscription_id'])) {
+					throw new PartyVerificationException(
+						402,
+						'SUBSCRIPTION_EXHAUSTED',
+						'Your plan ran out while this agreement was being created. Please renew and try again.',
+					);
+				}
+			});
+
+			// Records who confirmed, so the agreement carries its own proof
+			// rather than depending on rows that expire.
+			$otpModeService->snapshotForAgreement($aggriment, $callerId, $requiredParties);
+			// Add aggriment Details in aggriment table
+
+
+
+
         // Only create feed if allow_prompt is true
 //if ($request->boolean('allow_prompt')) {
     Feed::create([
@@ -675,6 +764,13 @@ $values['money_payment_method'] = $paymentDetails;
 				'status' => 'success',
 				'message' => 'Deal created successfully',
 			]);
+		} catch (PartyVerificationException $e) {
+
+			// A refusal about what the caller sent — the OTP tier is unsatisfied
+			// or the plan is exhausted. Caught ahead of the generic handler so it
+			// keeps its own status code instead of becoming a 500.
+			return $e->toResponse();
+
 		} catch (Exception $e) {
 
 			// Return a JSON response with a generic error message
@@ -831,12 +927,9 @@ if (!empty($sub_catgory)) {
 
 public function preview($file)
 {
-  //  $path = storage_path("app/public/pdfs/{$file}");
-  
-      $path = public_path('agreement_pdfs/' . $file);
+    $path = $this->resolveAgreementPdfPath($file);
 
-
-    if (!file_exists($path)) {
+    if ($path === null) {
         abort(404);
     }
 
@@ -845,18 +938,57 @@ public function preview($file)
     ]);
 }
 
-  
+
   public function download($file)
 {
-    //$path = storage_path("app/public/pdfs/{$file}");
-        $path = public_path('agreement_pdfs/' . $file);
+    $path = $this->resolveAgreementPdfPath($file);
 
-
-    if (!file_exists($path)) {
+    if ($path === null) {
         abort(404);
     }
 
     return response()->download($path);
+}
+
+/**
+ * Resolves a caller-supplied filename to a file inside the agreement PDF
+ * directory, or null.
+ *
+ * The route matches `.*`, so the parameter can contain slashes and dot
+ * segments. Concatenating it onto a base path let anyone read arbitrary files
+ * off the server — `../../.env` returned the database credentials. Two checks
+ * close that: basename() throws away any directory portion, and realpath()
+ * confirms the result really sits under the intended directory even if the
+ * name resolves through a symlink.
+ */
+private function resolveAgreementPdfPath($file): ?string
+{
+    if (!is_string($file) || $file === '') {
+        return null;
+    }
+
+    $name = basename($file);
+
+    if ($name === '' || $name === '.' || $name === '..') {
+        return null;
+    }
+
+    if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) !== 'pdf') {
+        return null;
+    }
+
+    $baseDir = realpath(public_path('agreement_pdfs'));
+    $path = realpath($baseDir . DIRECTORY_SEPARATOR . $name);
+
+    if ($baseDir === false || $path === false) {
+        return null;
+    }
+
+    if (!str_starts_with($path, $baseDir . DIRECTORY_SEPARATOR)) {
+        return null;
+    }
+
+    return is_file($path) ? $path : null;
 }
 
   

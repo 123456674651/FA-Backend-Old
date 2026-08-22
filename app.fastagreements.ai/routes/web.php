@@ -36,10 +36,20 @@ Route::middleware('guest')->group(function () {
 
 //Route::prefix('controlpanel')->group(function () {
 
-Route::get('controlpanel/admin', function () {
-   
-    return view('admin.dashboard.index');
-})->name('dashboard.index');
+/*
+| Removed: this claimed the name `dashboard.index`, which the real dashboard
+| route inside the auth group below also claims. Two routes cannot share a
+| name — it made `route:cache` fail with a LogicException, which is why route
+| caching could never be enabled. It also rendered the admin dashboard view to
+| anyone, with no auth middleware in front of it.
+|
+| `route('dashboard.index')` still resolves; it now points at the real
+| authenticated dashboard at `/`.
+|
+| Route::get('controlpanel/admin', function () {
+|     return view('admin.dashboard.index');
+| })->name('dashboard.index');
+*/
 
 //Route::get('admin/profile', function () {
  //   return view('admin.profile.index');
@@ -89,12 +99,18 @@ Route::resource('customers', CustomerController::class);
 Route::patch('customer/status_changes/{id}', [CustomerController::class, 'status_changes'])->name('customers.status_changes');
 Route::get('deal_categories/attribute/{id}',[DealCategoryController::class, 'category_attribute' ])->name('category_attribute');
 
-// Video Routes 
+// Video Routes
+//
+// Route::resource already registers index/show/update/destroy under the
+// videos.* names. The explicit declarations below re-registered those same
+// names, which made route:cache fail. The URLs are kept — something may link
+// to them — but the duplicated names are suffixed so each name is unique.
+// route('videos.show') and friends now resolve to the resource routes.
 Route::resource('videos', VideoController::class);
 Route::get('videos', [VideoController::class, 'index'])->name('videos.index');
-Route::put('/videos/{video}', [VideoController::class, 'update'])->name('videos.update');
-Route::get('videos/{id}', [VideoController::class, 'show'])->name('videos.show');
-Route::delete('videos/{id}', [VideoController::class, 'destroy'])->name('videos.destroy');
+Route::put('/videos/{video}', [VideoController::class, 'update'])->name('videos.update_explicit');
+Route::get('videos/{id}', [VideoController::class, 'show'])->name('videos.show_explicit');
+Route::delete('videos/{id}', [VideoController::class, 'destroy'])->name('videos.destroy_explicit');
 
 // Deal Controller 
 Route::resource('deals', DealController::class);
@@ -149,7 +165,9 @@ Route::get('attribute/index', [AttributeController::class, 'index'])->name('attr
     Route::post('attribute/import', [AttributeController::class, 'import'])->name('attribute.import');
         Route::get('attribute/list', [AttributeController::class, 'list'])->name('attribute.list');
     Route::post('attribute/bulk-delete', [AttributeController::class, 'bulkDelete'])->name('attribute.bulk_delete');
-    Route::put('documents/update/{id}', [DocumentController::class, 'update'])->name('documents.update');
+    // Name suffixed: Route::resource('/documents') below already owns
+    // documents.update. See the videos block above.
+    Route::put('documents/update/{id}', [DocumentController::class, 'update'])->name('documents.update_explicit');
 
 
   // Legal Notices Routes
@@ -162,7 +180,7 @@ Route::resource('/documents', DocumentController::class);
     Route::post('documents/upload-docx', [DocumentController::class, 'uploadDocx'])->name('documents.upload_docx');
     Route::get('documents/download/{id}', [DocumentController::class, 'download'])->name('documents.download');
     Route::get('documents/preview/{id}', [DocumentController::class, 'preview'])->name('documents.preview');
-    Route::delete('documents/delete/{id}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+    Route::delete('documents/delete/{id}', [DocumentController::class, 'destroy'])->name('documents.destroy_explicit');
     Route::resource('subscription-plans', SubscriptionPlanController::class);
 
 });
@@ -216,20 +234,30 @@ Route::resource('/documents', DocumentController::class);
     Route::get('notifications/history', [\App\Http\Controllers\Admin\NotificationHistoryController::class, 'index'])->name('notification-history.index');
     Route::get('notifications/history/{id}', [\App\Http\Controllers\Admin\NotificationHistoryController::class, 'show'])->name('notification-history.show');
     Route::post('notifications/history/{id}/resend', [\App\Http\Controllers\Admin\NotificationHistoryController::class, 'resend'])->name('notification-history.resend');
-    // Reports Module Group
-    Route::prefix('reports')->name('reports.')->group(function () {
-        Route::get('revenue', [\App\Http\Controllers\Admin\ReportController::class, 'revenue'])->name('revenue');
-        Route::get('users', [\App\Http\Controllers\Admin\ReportController::class, 'users'])->name('users');
-        Route::get('agreements', [\App\Http\Controllers\Admin\ReportController::class, 'agreements'])->name('agreements');
-        Route::get('categories', [\App\Http\Controllers\Admin\ReportController::class, 'categories'])->name('categories');
-        Route::get('payments', [\App\Http\Controllers\Admin\ReportController::class, 'payments'])->name('payments');
-        Route::get('advocates', [\App\Http\Controllers\Admin\ReportController::class, 'advocates'])->name('advocates');
-        Route::get('languages', [\App\Http\Controllers\Admin\ReportController::class, 'languages'])->name('languages');
-        Route::get('coupons', [\App\Http\Controllers\Admin\ReportController::class, 'coupons'])->name('coupons');
-        Route::get('daily', [\App\Http\Controllers\Admin\ReportController::class, 'daily'])->name('daily');
-        Route::get('monthly', [\App\Http\Controllers\Admin\ReportController::class, 'monthly'])->name('monthly');
-        Route::get('yearly', [\App\Http\Controllers\Admin\ReportController::class, 'yearly'])->name('yearly');
-    });
+    /*
+    | Reports Module Group
+    |
+    | Every route here pointed at App\Http\Controllers\Admin\ReportController,
+    | which has never existed in this repository — all eleven returned 500, and
+    | their presence made `php artisan route:list` and `route:cache` fail, so
+    | route caching could not be enabled at all. Commented out rather than
+    | deleted in case the controller turns up. The reports that do work live at
+    | customer-reports, agreement-reports and reports/gst-tr below.
+    |
+    | Route::prefix('reports')->name('reports.')->group(function () {
+    |     Route::get('revenue', [\App\Http\Controllers\Admin\ReportController::class, 'revenue'])->name('revenue');
+    |     Route::get('users', [\App\Http\Controllers\Admin\ReportController::class, 'users'])->name('users');
+    |     Route::get('agreements', [\App\Http\Controllers\Admin\ReportController::class, 'agreements'])->name('agreements');
+    |     Route::get('categories', [\App\Http\Controllers\Admin\ReportController::class, 'categories'])->name('categories');
+    |     Route::get('payments', [\App\Http\Controllers\Admin\ReportController::class, 'payments'])->name('payments');
+    |     Route::get('advocates', [\App\Http\Controllers\Admin\ReportController::class, 'advocates'])->name('advocates');
+    |     Route::get('languages', [\App\Http\Controllers\Admin\ReportController::class, 'languages'])->name('languages');
+    |     Route::get('coupons', [\App\Http\Controllers\Admin\ReportController::class, 'coupons'])->name('coupons');
+    |     Route::get('daily', [\App\Http\Controllers\Admin\ReportController::class, 'daily'])->name('daily');
+    |     Route::get('monthly', [\App\Http\Controllers\Admin\ReportController::class, 'monthly'])->name('monthly');
+    |     Route::get('yearly', [\App\Http\Controllers\Admin\ReportController::class, 'yearly'])->name('yearly');
+    | });
+    */
 
  Route::get('subscriptions/{id}/details', [CustomerController::class, 'getSubscriptionDetails'])->name('subscriptions.details');
 

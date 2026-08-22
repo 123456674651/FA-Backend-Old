@@ -40,6 +40,14 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Mobile customers. Stateless: the caller is identified by a signed
+        // token on every request, so there is no session to keep. Registered
+        // by AppServiceProvider::boot via Auth::viaRequest.
+        'customer' => [
+            'driver' => 'jwt-customer',
+            'provider' => 'customers',
+        ],
     ],
 
     /*
@@ -63,6 +71,12 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', App\Models\User::class),
+        ],
+
+        // Customers live in their own table, separate from admin users.
+        'customers' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Customer::class,
         ],
 
         // 'users' => [

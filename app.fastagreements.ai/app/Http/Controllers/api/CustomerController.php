@@ -561,8 +561,9 @@ class CustomerController extends Controller
     // To fetch customer details using a mobile number 
     public function getCustomerByMobile(Request $request)
     {
-        $user_id = $request->user_id;
-        // dd($user_id);
+        // The caller is whoever holds the session token, not whoever the body
+        // claims — otherwise the "same user" guard below is trivially bypassed.
+        $user_id = $request->user()->id;
         $mobile = $request->mobile_number;
         $customer = Customer::where('mobile', $mobile)->first();
          $firebaseToken = $request->fcm_token;
@@ -782,11 +783,12 @@ class CustomerController extends Controller
   public function updateAllowPrompt(Request $request)
 {
     $request->validate([
-        'customer_id' => 'required|exists:customers,id',
         'allow_prompt' => 'required|boolean',
     ]);
 
-    $customer = Customer::findOrFail($request->customer_id);
+    // Taken from the verified session, never from the body: accepting a
+    // customer_id here let any caller flip the flag on any account.
+    $customer = $request->user();
 
     $customer->update([
         'allow_prompt' => $request->allow_prompt,

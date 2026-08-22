@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Auth\Authenticatable as AuthenticatableTrait;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
@@ -9,9 +11,17 @@ use App\Models\City;
 use App\Models\State;
 use App\Models\Country;
 
-class Customer extends Model
+/**
+ * Authenticatable so the mobile API can resolve the caller from a signed token
+ * rather than from a `customer_id` sent in the request body.
+ *
+ * There is deliberately no password: customers prove who they are through
+ * Firebase phone verification, and this model is never used with a password
+ * broker or the session guard.
+ */
+class Customer extends Model implements AuthenticatableContract
 {
-    use HasFactory;
+    use HasFactory, AuthenticatableTrait;
 
     protected $appends = [
         'person_image_url',

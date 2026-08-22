@@ -597,7 +597,7 @@
     <footer id="footer" class="footer mt-auto py-3 bg-white border-top">
         <div class="container-fluid d-flex flex-column flex-sm-row justify-content-between align-items-center px-4">
             <div class="copyright text-muted mb-2 mb-sm-0 text-center text-sm-start">
-                &copy; Copyright <strong><span>Generation Next</span></strong>. All Rights Reserved
+                &copy; Copyright <strong><span>Fast Agreements</span></strong>. All Rights Reserved
             </div>
             <div class="version text-muted text-center text-sm-end">
                 Version 1.0.0
