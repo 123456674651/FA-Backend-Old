@@ -43,6 +43,11 @@ return [
         'certs_fallback_ttl' => 3600,
         // Tolerates small clock drift between this server and Google.
         'leeway' => 60,
+        // TESTING ONLY. When true, get_customer_by_mobile accepts a plain
+        // `test_mobile` field instead of a verified Firebase id_token. This
+        // must stay false everywhere a real user could reach the API — it
+        // is a full auth bypass. Never set true in production or staging.
+        'otp_bypass' => env('FIREBASE_OTP_BYPASS', false),
     ],
 
     /*

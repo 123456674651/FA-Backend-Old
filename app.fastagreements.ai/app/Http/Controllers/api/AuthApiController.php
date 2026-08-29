@@ -39,12 +39,18 @@ class AuthApiController extends Controller
      */
     public function firebaseExchange(Request $request): JsonResponse
     {
-        $request->validate(['id_token' => 'required|string']);
-
-        $identity = $this->firebase->verify($request->input('id_token'));
-
-        $mobile = FirebaseIdTokenVerifier::toStoredMobile($identity['phone_number']);
-
+        $request->validate([
+            'id_token' => 'required|string',
+        ]);
+    
+        $identity = $this->firebase->verify(
+            $request->input('id_token')
+        );
+    
+        $mobile = FirebaseIdTokenVerifier::toStoredMobile(
+            $identity['phone_number']
+        );
+    
         if (strlen($mobile) !== 10) {
             return ApiResponse::error(
                 422,
@@ -52,47 +58,38 @@ class AuthApiController extends Controller
                 'The verified number is not a 10-digit mobile.',
             );
         }
-
+    
         $customer = Customer::where('mobile', $mobile)->first();
         $isNew = false;
-
+    
         if ($customer === null) {
-            try {
-                $customer = Customer::create([
-                    'mobile' => $mobile,
-                    // Placeholders rather than nulls: several of these columns
-                    // predate this flow and are NOT NULL. The profile call
-                    // below is what fills them in properly.
-                    'name' => '',
-                    'address' => '',
-                    'is_active' => 1,
-                ]);
-            } catch (QueryException $e) {
-                Log::error('Customer auto-provisioning failed: ' . $e->getMessage());
-
-                return ApiResponse::error(
-                    500,
-                    'REGISTRATION_FAILED',
-                    'Could not create the account. Please try again.',
-                );
-            }
-
+            $customer = Customer::create([
+                'mobile' => $mobile,
+                'name' => '',
+                'address' => '',
+                'is_active' => 1,
+            ]);
+    
             $isNew = true;
         }
-
+    
         if (!$customer->is_active) {
-            return ApiResponse::error(403, 'ACCOUNT_DISABLED', 'This account has been disabled.');
+            return ApiResponse::error(
+                403,
+                'ACCOUNT_DISABLED',
+                'This account has been disabled.'
+            );
         }
-
-        // Keeps push notifications working across re-installs, where Firebase
-        // hands out a new device token.
+    
         if ($request->filled('fcm_token')) {
             $customer->fcm_token = $request->input('fcm_token');
             $customer->save();
         }
-
+    
         return ApiResponse::ok([
-            'token' => $this->jwt->issueForCustomer((int) $customer->id),
+            'token' => $this->jwt->issueForCustomer(
+                (int) $customer->id
+            ),
             'is_new_customer' => $isNew,
             'profile_complete' => $this->profileIsComplete($customer),
             'customer' => $this->publicCustomer($customer),

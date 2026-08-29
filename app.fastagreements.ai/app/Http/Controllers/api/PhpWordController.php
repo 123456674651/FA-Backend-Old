@@ -1015,7 +1015,7 @@ private function resolveAgreementPdfPath($file): ?string
 	
 
 
-	private function createDefaultTemplate(string $path, string $title): void
+	private function _DefaultTemplate(string $path, string $title): void
 	{
 		$phpWord = new PhpWord();
 		$section = $phpWord->addSection();

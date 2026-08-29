@@ -16,12 +16,22 @@ use App\Models\SubscriptionInvoice;
 use Carbon\Carbon;
 use App\Models\CustomerSubscription;
 use App\Models\Feed;
+use App\Services\Auth\FirebaseIdTokenVerifier;
+use App\Services\Auth\JwtService;
+use App\Support\ApiResponse;
+use Illuminate\Support\Facades\Log;
 
 
 
 class CustomerController extends Controller
 {
     use ImageResizer;
+
+    public function __construct(
+        private readonly FirebaseIdTokenVerifier $firebase,
+        private readonly JwtService $jwt,
+    ) {
+    }
     /**
      * Display a listing of the resource.
      */
@@ -558,79 +568,99 @@ class CustomerController extends Controller
         }
     }
 
-    // To fetch customer details using a mobile number 
+    /**
+     * Customer sign-in by mobile number, for an already-registered customer.
+     *
+     * This runs *before* the app has any session — the old version required
+     * `$request->user()` and compared the looked-up customer against "the
+     * current user", which cannot be right for a pre-login step; there is no
+     * current user yet. It also trusted a plain `mobile_number` field, so
+     * anyone could query anyone else's profile just by guessing a number.
+     *
+     * Now: Firebase runs phone verification (OTP) on the handset, the app
+     * posts the resulting `id_token` here, and the mobile number used for the
+     * lookup is the one inside that Google-signed token — never anything the
+     * client typed. A rejected token is rendered as 401 by the global
+     * exception handler (see bootstrap/app.php), so no try/catch is needed
+     * here.
+     *
+     * Unlike `auth/firebase-exchange`, this does NOT auto-register a new
+     * customer — it answers "log this existing customer in", and a number
+     * with no account gets a 404 so the app can route to registration
+     * instead. If you also want first-time numbers to be provisioned here,
+     * say so and this can call the same auto-create path firebaseExchange
+     * uses.
+     *
+     * TESTING ONLY — id_token bypass:
+     * When FIREBASE_OTP_BYPASS=true in .env (default: false/absent), a
+     * caller can send `test_mobile` instead of `id_token` and skip Firebase
+     * verification entirely. This must NEVER be true on a production or
+     * staging box reachable by real users — it lets anyone log in as any
+     * customer just by knowing their number. If the flag is off (the
+     * default), `test_mobile` is silently ignored and `id_token` is
+     * required as normal, so this is safe to leave in the code as long as
+     * the env var itself is never set to true outside local dev.
+     */
     public function getCustomerByMobile(Request $request)
     {
-        // The caller is whoever holds the session token, not whoever the body
-        // claims — otherwise the "same user" guard below is trivially bypassed.
-        $user_id = $request->user()->id;
-        $mobile = $request->mobile_number;
-        $customer = Customer::where('mobile', $mobile)->first();
-         $firebaseToken = $request->fcm_token;
+        $bypass = config('apiauth.firebase.otp_bypass') && $request->filled('mobile_number');
 
-        
-           if (!$customer) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'This mobile number is not registered',
-            ]);
-        }
-
-
-        if ($customer->id == $user_id) {
-
-            return response()->json([
-                'status' => false,
-                'message' => 'Same User not allowed',
-            ]);
-        }
-      
-       // Check if customer account is suspended
-        if ($customer->is_active == 0) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Your account has been suspended by the administrator. Please contact support.',
-            ]);
-        }
-      
-        // Update Firebase Token
-    if (!empty($firebaseToken)) {
-        $customer->update([
-            'fcm_token' => $firebaseToken
+        $request->validate([
+            'id_token' => $bypass ? 'nullable|string' : 'required|string',
+            'mobile_number' => 'nullable|string',
+            'fcm_token' => 'nullable|string',
         ]);
-    }
+        
 
-        if ($customer) {
-            return response()->json([
-                'status' => true,
-                'message' => 'Customer found',
-                 'data' => [
-                      'id'             => $customer->id,
-                      'name'           => $customer->name,
-                      'mobile'         => $customer->mobile,
-                      'email'          => $customer->email,
-                      'address'        => $customer->address,
-                      'company_name'   => $customer->company_name,
-                      'gst_number'     => $customer->gst_number,
-                      'location'       => $customer->location,
-                      'signature'      => $customer->signature,
-                      'occupation'     => $customer->occupation,
-                      'date_of_birth'  => $customer->date_of_birth,
-                      'gender'         => $customer->gender,
-                      'photo_url'          => $customer->photo ? asset($customer->photo) : null,
-                      'created_at' => $customer->created_at,
-                      'updated_at' => $customer->updated_at,
-                   
-                  ]
+        if ($bypass) {
+            $mobile = FirebaseIdTokenVerifier::toStoredMobile($request->input('mobile_number'));
+        } else {
+            $identity = $this->firebase->verify($request->input('id_token'));
+            $mobile = FirebaseIdTokenVerifier::toStoredMobile($identity['phone_number']);
+        }
 
+        $customer = Customer::where('mobile', $mobile)->first();
+
+        if (!$customer) {
+            return ApiResponse::error(404, 'CUSTOMER_NOT_FOUND', 'This mobile number is not registered');
+        }
+
+        if ((int) $customer->is_active === 0) {
+            return ApiResponse::error(
+                403,
+                'ACCOUNT_SUSPENDED',
+                'Your account has been suspended by the administrator. Please contact support.',
+            );
+        }
+
+        if ($request->filled('fcm_token')) {
+            $customer->update([
+                'fcm_token' => $request->fcm_token,
             ]);
         }
 
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Customer not found'
-        ], 404);
+        return ApiResponse::ok([
+            'token' => $this->jwt->issueForCustomer((int) $customer->id),
+            'customer' => [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'mobile' => $customer->mobile,
+                'email' => $customer->email,
+                'address' => $customer->address,
+                'company_name' => $customer->company_name,
+                'gst_number' => $customer->gst_number,
+                'location' => $customer->location,
+                'signature' => $customer->signature,
+                'occupation' => $customer->occupation,
+                'date_of_birth' => $customer->date_of_birth,
+                'gender' => $customer->gender,
+                'photo_url' => $customer->photo
+                    ? asset($customer->photo)
+                    : null,
+                'created_at' => $customer->created_at,
+                'updated_at' => $customer->updated_at,
+            ],
+        ], 'Customer found');
     }
 
     public function upload_image(Request $request)

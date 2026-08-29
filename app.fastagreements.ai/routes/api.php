@@ -53,6 +53,13 @@ use App\Models\Sceme;
 Route::post('auth/firebase-exchange', [AuthApiController::class, 'firebaseExchange']);
 Route::get('auth/exists', [AuthApiController::class, 'exists']);
 
+// Sign-in for an already-registered customer: verifies the Firebase id_token,
+// looks the customer up by the phone number inside it, and issues a session
+// token. Public for the same reason as firebase-exchange above — there is no
+// JWT to check yet. Kept separate from firebase-exchange because it does NOT
+// auto-register an unrecognised number; it 404s instead.
+Route::post('get_customer_by_mobile', [CustomerController::class, 'getCustomerByMobile']);
+
 // Catalogue and reference data. All read-only; the write halves live in the
 // admin group at the bottom of this file.
 Route::get('/deal_categories', [DealCategoryController::class, 'index'])->name('api.dealCategories.index');
@@ -122,7 +129,6 @@ Route::middleware('auth.jwt')->group(function () {
     Route::get('auth/me', [AuthApiController::class, 'me']);
     Route::match(['put', 'patch'], 'auth/profile', [AuthApiController::class, 'updateProfile']);
     Route::patch('/customers/allow-prompt', [CustomerController::class, 'updateAllowPrompt']);
-    Route::get('get_customer_by_mobile', [CustomerController::class, 'getCustomerByMobile']);
     Route::post('upload_image', [CustomerController::class, 'upload_image']);
 
     /*
