@@ -16,6 +16,7 @@
         "mpdf/mpdf": "^8.2",
         "phpoffice/phpword": "dev-master",
         "proengsoft/laravel-jsvalidation": "^4.9",
+        "razorpay/razorpay": "^2.9",
         "realrashid/sweet-alert": "^7.2",
         "tecnickcom/tcpdf": "^6.10",
         "yajra/laravel-datatables": "11.0",
