@@ -32,8 +32,12 @@ class SubscriptionPlanTest extends TestCase
     public function test_fractional_rupees_round_to_nearest_paise(): void
     {
         $this->assertSame(1099, $this->plan('months', 1, 10.99)->amountPaise());
-        // 0.1 + 0.2 style float error must not leak into money.
         $this->assertSame(2010, $this->plan('months', 1, 20.10)->amountPaise());
+        // These specifically catch a naive (int) cast: the float product sits
+        // just BELOW the integer paise value (e.g. 0.29 * 100 == 28.999999999999996),
+        // so truncating instead of rounding silently loses a paise.
+        $this->assertSame(29, $this->plan('months', 1, 0.29)->amountPaise());
+        $this->assertSame(201, $this->plan('months', 1, 2.01)->amountPaise());
     }
 
     public function test_per_agreement_is_recognised(): void
