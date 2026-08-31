@@ -17,7 +17,9 @@ class CustomerSubscription extends Model
         'start_date',
         'end_date',
         'is_active',
-        'remaining_agreements'
+        'remaining_agreements',
+        'otp_mode',
+        'payment_order_id'
     ];
 
     public function plan()

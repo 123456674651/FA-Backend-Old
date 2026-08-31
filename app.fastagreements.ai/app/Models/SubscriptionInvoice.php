@@ -23,6 +23,7 @@ class SubscriptionInvoice extends Model
         'invoice_date',
         'payment_status',
         'payment_method',
+        'payment_order_id',
     ];
 
     protected $dates = [

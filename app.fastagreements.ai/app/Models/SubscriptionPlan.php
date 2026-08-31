@@ -7,11 +7,16 @@ use Illuminate\Database\Eloquent\Model;
 
 class SubscriptionPlan extends Model
 {
+    public const OTP_WITH = 'with_otp';
+    public const OTP_WITHOUT = 'without_otp';
+
     protected $fillable = [
         'name',
         'price',
         'duration_type',
         'duration_value',
+        'otp_mode',
+        'agreement_limit',
         'features',
         'is_active'
     ];
