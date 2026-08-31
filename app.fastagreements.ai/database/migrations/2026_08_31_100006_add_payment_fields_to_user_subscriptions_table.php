@@ -35,6 +35,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (!Schema::hasTable('user_subscriptions')) {
+            return;
+        }
+
         Schema::table('user_subscriptions', function (Blueprint $table) {
             if (Schema::hasColumn('user_subscriptions', 'payment_order_id')) {
                 $table->dropForeign(['payment_order_id']);

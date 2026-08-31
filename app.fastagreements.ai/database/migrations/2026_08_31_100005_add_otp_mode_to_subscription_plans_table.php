@@ -29,6 +29,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (!Schema::hasTable('subscription_plans')) {
+            return;
+        }
+
         if (Schema::hasColumn('subscription_plans', 'otp_mode')) {
             Schema::table('subscription_plans', function (Blueprint $table) {
                 $table->dropColumn('otp_mode');
