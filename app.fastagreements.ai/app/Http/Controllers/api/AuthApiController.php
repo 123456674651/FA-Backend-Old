@@ -170,7 +170,23 @@ class AuthApiController extends Controller
         return trim((string) $customer->name) !== '';
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * The caller's own profile, in full.
+     *
+     * This is deliberately wider than what `get_customer_by_mobile` returns for
+     * somebody else, and the difference is the point: the subject here is always
+     * the holder of the token, so returning their own signature, date of birth
+     * and occupation to them discloses nothing. The same fields about a third
+     * party would, which is why the two projections must not be shared.
+     *
+     * Login reads this to populate its local snapshot. Before, it fetched that
+     * snapshot from `get_customer_by_mobile` — asking "who owns this number?" to
+     * learn something the token already stated — and that endpoint's
+     * "same user" guard, correct for its own party-lookup purpose, rejected the
+     * one caller who was entitled to the answer.
+     *
+     * @return array<string, mixed>
+     */
     private function publicCustomer(Customer $customer): array
     {
         return [
@@ -181,6 +197,19 @@ class AuthApiController extends Controller
             'address' => $customer->address,
             'person_image_url' => $customer->person_image_url,
             'is_active' => (bool) $customer->is_active,
+
+            // Self-only fields. Consumed by the login snapshot the app persists
+            // under `saveRenterLogin`, and by the agreement screens that prefill
+            // party 1 from it.
+            'signature' => $customer->signature,
+            'occupation' => $customer->occupation,
+            'date_of_birth' => $customer->date_of_birth,
+            'gender' => $customer->gender,
+            'company_name' => $customer->company_name,
+            'gst_number' => $customer->gst_number,
+            'location' => $customer->location,
+            'person_image' => $customer->person_image,
+            'photo_url' => $customer->photo ? asset($customer->photo) : null,
         ];
     }
 }

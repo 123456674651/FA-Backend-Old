@@ -766,7 +766,7 @@ $guarantor_number_array = explode(',',$guarantor_number);
         $aggriment->save();
         return response()->json([
             'status' => 'success',
-            'message' => 'Deal created successfully',
+            'message' => 'Agreement created successfully',
             'url' => $fileUrl,
             'aggriment_id' =>$aggriment->id,
             'filename' => 'money_agreement.pdf',

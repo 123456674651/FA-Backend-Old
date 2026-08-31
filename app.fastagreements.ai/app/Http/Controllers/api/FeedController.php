@@ -9,8 +9,8 @@ use App\Models\FeedCommentReport;
 use App\Models\FeedLike;
 use App\Models\FeedReport;
 use Illuminate\Http\Request;
+use App\Models\Aggriment;
 use App\Models\Feed;
-use App\Models\Customer;
 use Exception;
 use Illuminate\Support\Facades\Validator;
 class FeedController extends Controller
@@ -23,18 +23,10 @@ class FeedController extends Controller
         try {
             $perPage = $request->input('per_page', 10); // default 10
             $page = $request->input('page', 1);
+            // The feed is public to every signed-in customer. customer_id is
+            // only used to flag which rows this reader has liked or reported.
             $customer_id = $request->input('customer_id', null);
-          
-          $customer = Customer::find($customer_id);
 
-if (!$customer || !$customer->allow_prompt) {
-    return response()->json([
-        'status' => false,
-        'message' => 'You cannot view feeds. Please enable "Allow Prompt" in Settings.',
-        'data' => []
-    ], 403);
-}
-            
             $feeds = Feed::with(['customer:id,name', 'customer2:id,name','category:id,category_name,category_image,icon_text'])
                 ->withCount(['comments', 'likes'])
                 ->withExists([
@@ -47,14 +39,8 @@ if (!$customer || !$customer->allow_prompt) {
                 ])
                 ->latest()
                 ->paginate($perPage, ['*'], 'page', $page);
-            if ($feeds->isEmpty()) {
-                // If no feeds are found, return a 404 response
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No feeds found.',
-                    'data' => null
-                ], 404);
-            }
+            // An empty feed is a valid state, not an error — the client renders
+            // its own "nothing here yet" instead of an error toast.
             return response()->json([
                 'status' => true,
                 'message' => 'Feeds retrieved successfully.',
@@ -113,6 +99,73 @@ if (!$customer || !$customer->allow_prompt) {
     }
 
     /**
+     * Publish an existing agreement to the feed.
+     *
+     * Creating an agreement no longer posts one by itself — the app asks the
+     * creator after payment and calls this only if they say yes. The body
+     * carries just the agreement id: everything shown in the feed is read off
+     * the agreement here, so the client cannot post under another customer's
+     * name or against a category the agreement does not have.
+     */
+    public function publish(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'agreement_id' => 'required|integer',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation failed.',
+                    'data' => $validator->errors()
+                ], 422);
+            }
+
+            $agreement = Aggriment::find($request->input('agreement_id'));
+            if (!$agreement) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Agreement not found.',
+                    'data' => null
+                ], 404);
+            }
+
+            // Identity comes from the signed token, never the request body.
+            if ((int) $agreement->party_1_id !== (int) $request->user()->id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You can only share an agreement you created.',
+                    'data' => null
+                ], 403);
+            }
+
+            // Idempotent: a retry after a dropped response must not post twice.
+            $feed = Feed::firstOrCreate(
+                ['agreement_id' => $agreement->id],
+                [
+                    'type'         => 'agreement_created',
+                    'customer_id'  => $agreement->party_1_id,
+                    'customer_id2' => $agreement->party_2_id,
+                    'category_id'  => $agreement->category_id,
+                ]
+            );
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Agreement shared to feed successfully.',
+                'data' => $feed
+            ], 200);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred while sharing the agreement to feed.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * update a feed
      */
     public function update(Request $request)
@@ -163,6 +216,13 @@ if (!$customer || !$customer->allow_prompt) {
     {
         try {
             $feed = Feed::find($id);
+            if (!$feed) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Feed not found.',
+                    'data' => null
+                ], 404);
+            }
             $feed->delete();
             return response()->json([
                 'status' => true,
@@ -295,6 +355,13 @@ if (!$customer || !$customer->allow_prompt) {
     {
         try {
             $feedComment = FeedComment::find($id);
+            if (!$feedComment) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Feed comment not found.',
+                    'data' => null
+                ], 404);
+            }
             $feedComment->delete();
             return response()->json([
                 'status' => true,
@@ -500,6 +567,13 @@ if (!$customer || !$customer->allow_prompt) {
     {
         try {
             $feedCommentReport = FeedCommentReport::find($id);
+            if (!$feedCommentReport) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Comment report not found.',
+                    'data' => null
+                ], 404);
+            }
             $feedCommentReport->delete();
             return response()->json([
                 'status' => true,
@@ -614,6 +688,13 @@ if (!$customer || !$customer->allow_prompt) {
     {
         try {
             $feedReport = FeedReport::find($id);
+            if (!$feedReport) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Feed report not found.',
+                    'data' => null
+                ], 404);
+            }
             $feedReport->delete();
             return response()->json([
                 'status' => true,

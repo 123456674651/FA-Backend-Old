@@ -2,6 +2,10 @@
 
 return [
 
+    'libreoffice' => [
+        'binary' => env('LIBREOFFICE_BINARY', '/usr/bin/libreoffice'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Third Party Services

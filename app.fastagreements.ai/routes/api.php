@@ -121,6 +121,10 @@ Route::middleware('auth.jwt')->group(function () {
     // Account
     Route::get('auth/me', [AuthApiController::class, 'me']);
     Route::match(['put', 'patch'], 'auth/profile', [AuthApiController::class, 'updateProfile']);
+    // The caller's own profile page, subscription and invoices. Same payload as
+    // the admin `customers/show/{customer}`, but scoped to the token holder —
+    // the app needs this about itself and must not go through the admin route.
+    Route::get('profile', [CustomerController::class, 'showSelf']);
     Route::patch('/customers/allow-prompt', [CustomerController::class, 'updateAllowPrompt']);
     Route::get('get_customer_by_mobile', [CustomerController::class, 'getCustomerByMobile']);
     Route::post('upload_image', [CustomerController::class, 'upload_image']);
@@ -139,6 +143,11 @@ Route::middleware('auth.jwt')->group(function () {
 
     // Agreements
     Route::post('/create_aggriment/v1', [PhpWordController::class, 'create_aggriment']);
+    // Content edits to an existing agreement, re-rendering the document.
+    // POST, not PATCH: PHP populates no $_FILES for a PATCH body, and an edit
+    // may re-upload party, Aadhaar or vehicle images. Parties, category and
+    // language are fixed at creation — the handler refuses to change them.
+    Route::post('/update_aggriment/v1', [PhpWordController::class, 'update_aggriment']);
     Route::post('/convert_Word_to_pdf/v1', [PhpWordController::class, 'convertWordToPdf']);
     Route::post('create_aggriment', [PDFController::class, 'create_aggriment']);
     Route::post('list_aggriment', [PDFController::class, 'list_aggriment']);
@@ -169,6 +178,9 @@ Route::middleware('auth.jwt')->group(function () {
 
     // Feed
     Route::get('/feed', [FeedController::class, 'index']);
+    // Opt-in share, called from the post-payment prompt. Agreement creation
+    // does not post to the feed on its own.
+    Route::post('/feed/publish', [FeedController::class, 'publish']);
     Route::post('/feed', [FeedController::class, 'store']);
     Route::put('/feed', [FeedController::class, 'update']);
     Route::delete('/feed/delete/{feed}', [FeedController::class, 'destroy']);

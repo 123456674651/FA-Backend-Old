@@ -359,6 +359,22 @@ class CustomerController extends Controller
     /**
      * Display the specified resource.
      */
+    /**
+     * The signed-in customer's own profile page.
+     *
+     * Delegates to [show] with the id off the token rather than one from the
+     * URL. The app used to call `customers/show/{id}` for itself, but that
+     * route is in the admin group, so a customer's JWT could never satisfy it:
+     * it answered 401, the client read an unlabelled 401 as the session dying,
+     * and a customer who had just signed in was thrown back to the login
+     * screen. Same shape as [show], so everything reading the profile snapshot
+     * is unaffected — only who is allowed to ask, and for whom.
+     */
+    public function showSelf(Request $request)
+    {
+        return $this->show((string) $request->user()->id);
+    }
+
     public function show(string $id)
     {
                 $subscriptionStatus = $this->status($id);
@@ -780,26 +796,24 @@ class CustomerController extends Controller
         ]);
     }
   
+  /**
+   * Retired: the feed is public and sharing is chosen per agreement, so this
+   * flag no longer controls anything. Kept as a no-op because app builds
+   * already in the wild still call it from the old Profile switch — removing
+   * the route would 404 them mid-flow. Delete once those builds are gone.
+   */
   public function updateAllowPrompt(Request $request)
 {
     $request->validate([
         'allow_prompt' => 'required|boolean',
     ]);
 
-    // Taken from the verified session, never from the body: accepting a
-    // customer_id here let any caller flip the flag on any account.
-    $customer = $request->user();
-
-    $customer->update([
-        'allow_prompt' => $request->allow_prompt,
-    ]);
-
     return response()->json([
         'status' => true,
         'message' => 'Allow prompt updated successfully.',
         'data' => [
-            'customer_id' => $customer->id,
-            'allow_prompt' => $customer->allow_prompt,
+            'customer_id' => $request->user()->id,
+            'allow_prompt' => $request->boolean('allow_prompt'),
         ]
     ], 200);
 }

@@ -148,7 +148,7 @@ class DealController extends Controller
         $deal->save();
 
         // Redirect with success message
-        return redirect()->route('deals.index')->with('success', 'Deal created successfully.');
+        return redirect()->route('deals.index')->with('success', 'Agreement created successfully.');
     }
 
     /**
