@@ -8,7 +8,6 @@ use App\Models\Deal;
 use App\Models\Aggriment;
 use App\Models\AgreementAttribute;
 use App\Models\CategoryAttribute;
-use App\Models\Installment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Mpdf\Mpdf;
@@ -587,25 +586,6 @@ $amount_in_word = ucfirst($fmt->format(1000));
 
         $aggriment = Aggriment::with('party1', 'party2', 'category', 'attributes.categoryAttribute')->where('id', $aggriment->id)->first();
 
-        if (!is_null($aggriment->amount)) {
-
-            $start_date = $aggriment->start_date;
-            $end_date  = $aggriment->end_date;
-
-            $start = Carbon::parse($start_date);
-            $end =  Carbon::parse($end_date);
-            $perid = $start->diffInMonths($end);
-
-            $amount = $aggriment->amount / $aggriment->period;
-
-            for ($i = 0; $i < $aggriment->period; $i++) {
-                $installment  = new Installment;
-                $installment->agreement_id = $aggriment->id;
-                $installment->emi_amount = $amount;
-                $installment->emi_date = $start->copy()->addMonths($i + 1);
-                $installment->save();
-            }
-        }
         $attribute_list = AgreementAttribute::join('category_attributes', 'category_attributes.id', '=', 'agreement_attribute.attribute_id')->where('agreement_id', $aggriment->id)->get();
         $startDateTime = Carbon::createFromFormat('Y-m-d', $aggriment->start_date);
         $endDateTime = Carbon::createFromFormat('Y-m-d', $aggriment->end_date);
@@ -821,8 +801,6 @@ $guarantor_number_array = explode(',',$guarantor_number);
 
         foreach ($party_1 as $party) {
 
-            $installments = Installment::where('agreement_id', $party->id)->get();
-
             // $history = History::where('agreement_id', 1)->get();
 
             $response[] = [
@@ -839,7 +817,6 @@ $guarantor_number_array = explode(',',$guarantor_number);
                 'language' => $party->language,
                 'language_name' => $party->language_name,
                 'agreement_type' => $party->category->category_name,
-                'installments' => $installments,
                 // 'history' => $history
 
             ];
@@ -958,7 +935,7 @@ $guarantor_number_array = explode(',',$guarantor_number);
             'party2',
             'category',
             // 'attributes.categoryAttribute',
-            'installments',
+            // 'installments',
             'histories.cutomers',
              'invoice'
 

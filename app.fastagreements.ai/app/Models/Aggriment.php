@@ -44,11 +44,6 @@ class Aggriment extends Model
       return $this->hasMany(AgreementAttribute::class, 'agreement_id', 'id');
    }
 
-   public function installments()
-   {
-      return $this->hasMany(Installment::class, 'agreement_id', 'id');
-   }
-
    public function histories()
    {
       return $this->hasMany(History::class, 'agreement_id', 'id');

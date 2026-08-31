@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\File;
 use App\Models\Aggriment;
 use App\Models\CategoryLanguage;
 use App\Models\AgreementAttribute;
-use App\Models\Installment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Traits\ImageResizer;
@@ -481,29 +480,6 @@ public function amountToWords($number)
 
 			$aggriment = Aggriment::with('party1', 'party2', 'category', 'attributes.categoryAttribute')->where('id', $aggriment->id)->first();
 
-			if (!is_null($aggriment->amount)) {
-
-				if (
-    !is_null($aggriment->amount) &&
-    !empty($aggriment->start_date) &&
-    !empty($aggriment->end_date) &&
-    !empty($aggriment->period) &&
-    $aggriment->period > 0
-) {
-
-    $start = Carbon::parse($aggriment->start_date);
-    $end   = Carbon::parse($aggriment->end_date);
-
-    $amount = $aggriment->amount / $aggriment->period;
-
-    for ($i = 0; $i < $aggriment->period; $i++) {
-        $installment = new Installment;
-        $installment->agreement_id = $aggriment->id;
-        $installment->emi_amount = $amount;
-        $installment->emi_date = $start->copy()->addMonths($i + 1);
-        $installment->save();
-    }
-}			}
 
 			$attribute_list = AgreementAttribute::join('category_attributes', 'category_attributes.id', '=', 'agreement_attribute.attribute_id')->where('agreement_id', $aggriment->id)->get();
           	if (
