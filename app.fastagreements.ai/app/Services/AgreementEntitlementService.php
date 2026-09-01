@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CustomerSubscription;
+use App\Models\SubscriptionPlan;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -25,9 +26,11 @@ class AgreementEntitlementService
      * reports an expired date-bounded plan in a form fine for a status banner
      * but which would hand free agreements to a lapsed subscriber here.
      *
+     * @param string|null $otpMode The tier of the agreement being created.
+     *                             Null skips the coverage check.
      * @return array{subscription_id: int, remaining_agreements: int|null}|null
      */
-    public function getEntitlement(int $customerId): ?array
+    public function getEntitlement(int $customerId, ?string $otpMode = null): ?array
     {
         $today = Carbon::today()->toDateString();
 
@@ -37,6 +40,14 @@ class AgreementEntitlementService
             // A null end_date is lifetime or quota-limited; both stay valid on date.
             ->where(function ($query) use ($today) {
                 $query->whereNull('end_date')->orWhereDate('end_date', '>=', $today);
+            })
+            // A without_otp plan is the cheaper tier, so it cannot pay for an
+            // OTP-verified agreement. The reverse is fine: a with_otp holder
+            // overpaid, and NULL predates the feature and covers both.
+            ->when($otpMode === SubscriptionPlan::OTP_WITH, function ($query) {
+                $query->where(function ($q) {
+                    $q->whereNull('otp_mode')->orWhere('otp_mode', SubscriptionPlan::OTP_WITH);
+                });
             })
             ->orderByDesc('id')
             ->first();

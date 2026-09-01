@@ -237,6 +237,7 @@ public function amountToWords($number)
                 // Nullable so an older caller still works; null is treated the
                 // same as without_otp by the gate below.
                 'otp_mode'   => 'nullable|in:' . implode(',', AgreementOtpModeService::modes()),
+                'is_draft'   => 'nullable|boolean',
 
             ]);
 
@@ -291,6 +292,7 @@ public function amountToWords($number)
 				);
 			}
 
+			$isDraft = $request->boolean('is_draft');
 			$otpModeService = app(AgreementOtpModeService::class);
 			$otpMode = $request->input('otp_mode');
 
@@ -304,12 +306,14 @@ public function amountToWords($number)
 			// Under with_otp every party and guarantor must already have
 			// confirmed their number through Firebase. Throws with the list of
 			// who is still outstanding.
-			$otpModeService->assertVerifiedForCreation($callerId, $otpMode, $requiredParties);
+			if (!$isDraft) {
+				$otpModeService->assertVerifiedForCreation($callerId, $otpMode, $requiredParties);
+			}
 
 			$entitlements = app(AgreementEntitlementService::class);
-			$entitlement = $entitlements->getEntitlement($callerId);
+			$entitlement = $isDraft ? null : $entitlements->getEntitlement($callerId, $otpMode);
 
-			if ($entitlement === null) {
+			if (!$isDraft && $entitlement === null) {
 				throw new PartyVerificationException(
 					402,
 					'SUBSCRIPTION_REQUIRED',
@@ -340,6 +344,7 @@ public function amountToWords($number)
 			// Add aggriment Details in aggriment table
 			$aggriment = new Aggriment;
 			$aggriment->otp_mode = $otpMode;
+			$aggriment->is_draft = $isDraft;
 			$aggriment->party_1_id = $party_1;
 			$aggriment->party_1_signature = $request->party_1_signature;
 			$aggriment->party_2_id = $party_2;
@@ -408,10 +413,10 @@ public function amountToWords($number)
 			// The insert and the plan decrement share one transaction, so two
 			// agreements racing on the last remaining credit cannot both
 			// succeed — without it, both read "1 left" and both write "0".
-			DB::transaction(function () use ($aggriment, $entitlement, $entitlements) {
+			DB::transaction(function () use ($aggriment, $entitlement, $entitlements, $isDraft) {
 				$aggriment->save();
 
-				if (!$entitlements->consume($entitlement['subscription_id'])) {
+				if (!$isDraft && !$entitlements->consume($entitlement['subscription_id'])) {
 					throw new PartyVerificationException(
 						402,
 						'SUBSCRIPTION_EXHAUSTED',
@@ -422,7 +427,9 @@ public function amountToWords($number)
 
 			// Records who confirmed, so the agreement carries its own proof
 			// rather than depending on rows that expire.
-			$otpModeService->snapshotForAgreement($aggriment, $callerId, $requiredParties);
+			if (!$isDraft) {
+				$otpModeService->snapshotForAgreement($aggriment, $callerId, $requiredParties);
+			}
 			// Add aggriment Details in aggriment table
 
 
@@ -471,6 +478,14 @@ public function amountToWords($number)
                 );
             }
         }
+
+			if ($isDraft) {
+				return response()->json([
+					'data' => $aggriment->fresh(['party1', 'party2', 'category', 'attributes.categoryAttribute']),
+					'status' => 'success',
+					'message' => 'Draft saved successfully',
+				]);
+			}
 
 			$aggriment = Aggriment::with('party1', 'party2', 'category', 'attributes.categoryAttribute')->where('id', $aggriment->id)->first();
 
@@ -841,6 +856,7 @@ public function amountToWords($number)
 				'agreement_date' => 'nullable|date',
 				'period'         => 'nullable|integer|min:0',
 				'security'       => 'nullable|numeric',
+				'is_draft'       => 'nullable|boolean',
 			]);
 
 			if ($validator->fails()) {
@@ -852,6 +868,9 @@ public function amountToWords($number)
 			}
 
 			$aggriment = Aggriment::with('party1', 'party2')->findOrFail($agreementId);
+			$publishingDraft = (bool) $aggriment->is_draft
+				&& $request->has('is_draft')
+				&& !$request->boolean('is_draft');
 
 			// Identity comes from the token, never from the body — the same rule
 			// create_aggriment follows.
@@ -901,10 +920,10 @@ public function amountToWords($number)
 				($request->has('guarantor') && (string) $request->input('guarantor') !== (string) $aggriment->guarantor)
 				|| ($request->has('guarantor_number') && (string) $request->input('guarantor_number') !== (string) $aggriment->guarantor_number);
 
-			$reverify = $guarantorChanged && $aggriment->otp_mode === AgreementOtpModeService::WITH_OTP;
+			$reverify = !$aggriment->is_draft && $guarantorChanged && $aggriment->otp_mode === AgreementOtpModeService::WITH_OTP;
 			$required = [];
 
-			if ($reverify) {
+			if ($reverify || $publishingDraft) {
 				$required = $otpModeService->requiredForCreation(
 					$aggriment->party1,
 					$aggriment->party2,
@@ -913,6 +932,13 @@ public function amountToWords($number)
 				);
 
 				$otpModeService->assertVerifiedForCreation($callerId, $aggriment->otp_mode, $required);
+			}
+
+			$entitlements = app(AgreementEntitlementService::class);
+			$entitlement = $publishingDraft ? $entitlements->getEntitlement($callerId, $aggriment->otp_mode) : null;
+
+			if ($publishingDraft && $entitlement === null) {
+				throw new PartyVerificationException(402, 'SUBSCRIPTION_REQUIRED', 'Your plan does not cover another agreement. Please renew to continue.');
 			}
 
 			// Only fields the caller actually sent are touched, so the app can
@@ -936,6 +962,7 @@ public function amountToWords($number)
 				'guarantor',
 				'guarantor_number',
 				'agreement_status',
+				'is_draft',
 				'documents',
 				'party_1_age',
 				'party_2_age',
@@ -976,19 +1003,31 @@ public function amountToWords($number)
 			// Read before save(), which clears the dirty state.
 			$scheduleChanged = $aggriment->isDirty(['amount', 'period', 'start_date', 'end_date']);
 
-			DB::transaction(function () use ($aggriment, $request, $scheduleChanged) {
+			DB::transaction(function () use ($aggriment, $request, $scheduleChanged, $publishingDraft, $entitlement, $entitlements) {
 				$aggriment->save();
 
 				$this->syncAgreementAttributes($aggriment, $request->input('attribute'));
 
-				if ($scheduleChanged) {
+				if (!$aggriment->is_draft && ($scheduleChanged || $publishingDraft)) {
 					$this->rebuildInstallments($aggriment);
+				}
+
+				if ($publishingDraft && !$entitlements->consume($entitlement['subscription_id'])) {
+					throw new PartyVerificationException(402, 'SUBSCRIPTION_EXHAUSTED', 'Your plan ran out while this agreement was being published. Please renew and try again.');
 				}
 			});
 
 			// Re-record who confirmed, now that the guarantor list has changed.
-			if ($reverify) {
+			if ($reverify || $publishingDraft) {
 				$otpModeService->snapshotForAgreement($aggriment, $callerId, $required);
+			}
+
+			if ($aggriment->is_draft) {
+				return response()->json([
+					'data' => $aggriment->fresh(['party1', 'party2', 'category', 'attributes.categoryAttribute']),
+					'status' => 'success',
+					'message' => 'Draft updated successfully',
+				]);
 			}
 
 			$aggriment = Aggriment::with('party1', 'party2', 'category', 'attributes.categoryAttribute')
