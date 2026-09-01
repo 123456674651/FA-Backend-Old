@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Payment;
 
+use App\Models\CustomerSubscription;
 use App\Models\PaymentOrder;
 use App\Models\SubscriptionInvoice;
 use App\Services\Auth\JwtService;
@@ -122,6 +123,27 @@ class PaymentApiTest extends TestCase
         $this->assertSame(0, PaymentOrder::where('customer_id', $victim)->count());
     }
 
+    public function test_a_gateway_failure_returns_a_502_and_creates_no_order(): void
+    {
+        $this->gateway->throwOnCreate = true;
+
+        $this->actingAsCustomer($this->makeCustomer())
+            ->postJson('/api/payment/order', ['subscription_plan_id' => $this->makePlan()])
+            ->assertStatus(502);
+
+        $this->assertSame(0, PaymentOrder::count());
+    }
+
+    public function test_an_invalid_otp_mode_is_rejected(): void
+    {
+        $this->actingAsCustomer($this->makeCustomer())
+            ->postJson('/api/payment/order', [
+                'subscription_plan_id' => $this->makePlan(),
+                'otp_mode' => 'not_a_real_mode',
+            ])
+            ->assertStatus(422);
+    }
+
     public function test_an_unknown_plan_is_rejected(): void
     {
         $this->actingAsCustomer($this->makeCustomer())
@@ -145,7 +167,7 @@ class PaymentApiTest extends TestCase
             ->postJson('/api/payment/order', ['subscription_plan_id' => $this->makePlan()])
             ->assertOk();
 
-        $this->actingAsCustomer($customer)->postJson('/api/payment/verify', [
+        $response = $this->actingAsCustomer($customer)->postJson('/api/payment/verify', [
             'razorpay_order_id' => 'order_V1',
             'razorpay_payment_id' => 'pay_V1',
             'razorpay_signature' => $this->signature('order_V1', 'pay_V1'),
@@ -156,6 +178,13 @@ class PaymentApiTest extends TestCase
             PaymentOrder::where('razorpay_order_id', 'order_V1')->value('status')
         );
         $this->assertSame(1, SubscriptionInvoice::where('customer_id', $customer)->count());
+
+        $order = PaymentOrder::where('razorpay_order_id', 'order_V1')->first();
+        $subscription = CustomerSubscription::where('payment_order_id', $order->id)->first();
+
+        $this->assertNotNull($subscription);
+        $this->assertSame($subscription->id, $response->json('subscription_id'));
+        $this->assertNotSame($order->subscription_plan_id, $response->json('subscription_id'));
     }
 
     public function test_verify_rejects_a_forged_signature_and_grants_nothing(): void

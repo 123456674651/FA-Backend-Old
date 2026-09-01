@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\api;
 
 use App\Http\Controllers\Controller;
+use App\Models\CustomerSubscription;
 use App\Models\PaymentOrder;
 use App\Models\SubscriptionInvoice;
+use App\Models\SubscriptionPlan;
 use App\Services\Payment\PaymentException;
 use App\Services\Payment\PaymentFulfilmentService;
+use App\Services\Payment\PaymentGatewayException;
 use App\Services\Payment\PaymentOrderService;
 use App\Services\Payment\PaymentVerificationService;
 use Illuminate\Http\JsonResponse;
@@ -26,7 +29,7 @@ class PaymentApiController extends Controller
     {
         $data = $request->validate([
             'subscription_plan_id' => 'required|integer',
-            'otp_mode' => 'nullable|string',
+            'otp_mode' => 'nullable|in:' . SubscriptionPlan::OTP_WITH . ',' . SubscriptionPlan::OTP_WITHOUT,
         ]);
 
         $customerId = (int) $request->user()->id;
@@ -38,6 +41,13 @@ class PaymentApiController extends Controller
                 'status' => false,
                 'message' => $e->getMessage(),
             ], 422);
+        } catch (PaymentGatewayException $e) {
+            report($e);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'The payment gateway is unavailable. Please try again.',
+            ], 502);
         }
 
         if (!$result['payment_required']) {
@@ -92,10 +102,11 @@ class PaymentApiController extends Controller
         $order = $this->fulfilment->fulfil($order, $data['razorpay_payment_id'], $data['razorpay_signature']);
 
         $invoice = SubscriptionInvoice::query()->where('payment_order_id', $order->id)->first();
+        $subscriptionId = CustomerSubscription::query()->where('payment_order_id', $order->id)->value('id');
 
         return response()->json([
             'status' => 'success',
-            'subscription_id' => $order->subscription_plan_id,
+            'subscription_id' => $subscriptionId,
             'invoice_id' => $invoice?->id,
         ]);
     }
