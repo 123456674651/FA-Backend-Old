@@ -17,7 +17,7 @@ class FakeRazorpayGateway implements RazorpayGateway
     public function createOrder(int $amountPaise, string $currency, string $receipt, array $notes = []): string
     {
         if ($this->throwOnCreate) {
-            throw new PaymentGatewayException('Fake gateway failure.');
+            throw new PaymentGatewayException('Simulated gateway failure.');
         }
 
         $this->createdOrders[] = [

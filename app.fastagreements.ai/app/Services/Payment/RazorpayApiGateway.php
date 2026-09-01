@@ -23,11 +23,13 @@ class RazorpayApiGateway implements RazorpayGateway
                 'currency' => $currency,
                 'receipt' => $receipt,
                 'notes' => $notes,
+                // Razorpay may auto-capture; we still reconcile via webhook.
+                'payment_capture' => 1,
             ]);
 
             return (string) $order['id'];
         } catch (Throwable $e) {
-            throw new PaymentGatewayException('Razorpay order creation failed: ' . $e->getMessage(), 0, $e);
+            throw new PaymentGatewayException('Could not create the Razorpay order: ' . $e->getMessage(), 0, $e);
         }
     }
 }
