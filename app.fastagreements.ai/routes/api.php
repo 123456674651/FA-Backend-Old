@@ -11,6 +11,7 @@ use App\Http\Controllers\api\InvoiceController;
 use App\Http\Controllers\api\LanguageController;
 use App\Http\Controllers\api\PageController;
 use App\Http\Controllers\api\PartyVerificationController;
+use App\Http\Controllers\api\PaymentApiController;
 use App\Http\Controllers\api\PDFController;
 use App\Http\Controllers\api\PhpWordController;
 use App\Http\Controllers\api\PurposeController;
@@ -171,6 +172,8 @@ Route::middleware('auth.jwt')->group(function () {
 
     // Money
     Route::get('subscription/status/{customer_id}', [SubscriptionApiController::class, 'status']);
+    Route::post('payment/order', [PaymentApiController::class, 'createOrder']);
+    Route::post('payment/verify', [PaymentApiController::class, 'verify']);
     Route::post('subscription/renew', [SubscriptionApiController::class, 'renew']);
     Route::get('subscription-invoices/pdf-url/{id}', [InvoiceController::class, 'getInvoicePdfUrl']);
     Route::get('subscription-invoices/view/{id}', [InvoiceController::class, 'viewPdf']);
