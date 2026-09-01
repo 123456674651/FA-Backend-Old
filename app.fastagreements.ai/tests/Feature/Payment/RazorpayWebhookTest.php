@@ -159,4 +159,39 @@ class RazorpayWebhookTest extends TestCase
     {
         $this->send($this->payload('payment.authorized', 'order_W8', 'pay_W8'))->assertOk();
     }
+
+    /**
+     * Guards against computing the HMAC over json_encode($request->all())
+     * instead of $request->getContent(). The raw body here is pretty-printed
+     * (real whitespace between tokens); json_decode() discards that
+     * whitespace, and Laravel's default json_encode() re-serialises compact,
+     * so a decode/re-encode round trip does not reproduce the original
+     * bytes. A signature computed over the re-encoded array would therefore
+     * fail to match one computed over the raw body Razorpay actually sent.
+     */
+    public function test_the_signature_is_verified_over_raw_bytes_not_a_reencoded_array(): void
+    {
+        $order = $this->makeOrder('order_W9');
+
+        $body = json_encode([
+            'event' => 'payment.captured',
+            'payload' => [
+                'payment' => [
+                    'entity' => [
+                        'id' => 'pay_W9',
+                        'order_id' => 'order_W9',
+                        'error_description' => '',
+                    ],
+                ],
+            ],
+        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+
+        // Confirm the fixture actually exercises the divergence this test
+        // exists to catch; otherwise it would be no stronger than the others.
+        $this->assertNotSame($body, json_encode(json_decode($body, true)));
+
+        $this->send($body, hash_hmac('sha256', $body, self::WEBHOOK_SECRET))->assertOk();
+
+        $this->assertSame(PaymentOrder::STATUS_PAID, $order->fresh()->status);
+    }
 }
