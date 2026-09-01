@@ -15,6 +15,7 @@ use App\Http\Controllers\api\PaymentApiController;
 use App\Http\Controllers\api\PDFController;
 use App\Http\Controllers\api\PhpWordController;
 use App\Http\Controllers\api\PurposeController;
+use App\Http\Controllers\api\RazorpayWebhookController;
 use App\Http\Controllers\api\SliderController;
 use App\Http\Controllers\api\SubscriptionApiController;
 use App\Http\Controllers\Admin\AttributeController;
@@ -59,6 +60,10 @@ Route::get('auth/exists', [AuthApiController::class, 'exists']);
 Route::get('/deal_categories', [DealCategoryController::class, 'index'])->name('api.dealCategories.index');
 Route::get('/deal_categories/show/{deal_category}', [DealCategoryController::class, 'show'])->name('api.dealCategories.show');
 Route::post('attribute/list', [AttributeController::class, 'list'])->name('api.attribute.list');
+
+// Razorpay's server-to-server callback. Deliberately unauthenticated: the
+// gateway carries no token, and the HMAC over the raw body is the auth.
+Route::post('webhooks/razorpay', [RazorpayWebhookController::class, 'handle']);
 
 Route::get('/languages', [LanguageController::class, 'index'])->name('api.languages.index');
 Route::get('/purposes', [PurposeController::class, 'index'])->name('api.purposes.index');
