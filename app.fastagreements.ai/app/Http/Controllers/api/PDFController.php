@@ -485,7 +485,7 @@ $amount_in_word = ucfirst($fmt->format(1000));
         $otpModeService->assertVerifiedForCreation($callerId, $otpMode, $requiredParties);
 
         $entitlements = app(AgreementEntitlementService::class);
-        $entitlement = $entitlements->getEntitlement($callerId);
+        $entitlement = $entitlements->getEntitlement($callerId, $otpMode);
 
         if ($entitlement === null) {
             throw new PartyVerificationException(
