@@ -1184,8 +1184,12 @@ if (!empty($sub_catgory)) {
     $query->where('category_id', $category_id);
 }
       $path = $query->firstOrFail();
-    // Template file (stored in storage)
-    $templatePath = storage_path('app/' . $path->file_path);
+
+    // Resolve the stored template path in a way that works with the app's
+    // local storage layout and avoid passing a missing or corrupt file to
+    // PhpWord's ZipArchive / TemplateProcessor.
+    $templatePath = $this->resolveDocumentTemplatePath($path->file_path);
+    $this->assertValidDocx($templatePath);
 
     // OUTPUT DIRECTORY → public/word
     $outputsDir = public_path('word');
@@ -1420,6 +1424,8 @@ private function resolveAgreementPdfPath($file): ?string
 
 	private function normalizePlaceholdersToCurly(string $srcPath): string
 	{
+		$this->assertValidDocx($srcPath);
+
 		$tmpDir = storage_path('app/tmp');
 		if (! is_dir($tmpDir)) mkdir($tmpDir, 0777, true);
 		$destPath = $tmpDir . DIRECTORY_SEPARATOR . 'norm_' . Str::uuid() . '.docx';
@@ -1427,11 +1433,11 @@ private function resolveAgreementPdfPath($file): ?string
 		$zip = new \ZipArchive();
 		$zipOut = new \ZipArchive();
 		if ($zip->open($srcPath) !== true) {
-			return $srcPath;
+			throw new \RuntimeException('DOCX template is invalid or unreadable: ' . $srcPath);
 		}
 		if ($zipOut->open($destPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
 			$zip->close();
-			return $srcPath;
+			throw new \RuntimeException('Unable to create normalized DOCX copy for: ' . $srcPath);
 		}
 		for ($i = 0; $i < $zip->numFiles; $i++) {
 			$stat = $zip->statIndex($i);
@@ -1464,8 +1470,60 @@ private function resolveAgreementPdfPath($file): ?string
 		return $destPath;
 	}
 
+  private function resolveDocumentTemplatePath(?string $storedPath): string
+  {
+      if (empty($storedPath)) {
+          throw new \RuntimeException('Document template path is empty.');
+      }
+
+      $candidates = [
+          $storedPath,
+          storage_path('app/' . ltrim($storedPath, '/')),
+          storage_path(ltrim($storedPath, '/')),
+          base_path(ltrim($storedPath, '/')),
+          public_path(ltrim($storedPath, '/')),
+      ];
+
+      foreach ($candidates as $candidate) {
+          if (is_string($candidate) && $candidate !== '' && is_file($candidate)) {
+              return $candidate;
+          }
+      }
+
+      $localPath = Storage::disk('local')->path(ltrim($storedPath, '/'));
+      if (is_file($localPath)) {
+          return $localPath;
+      }
+
+      throw new \RuntimeException('Document template not found: ' . $storedPath);
+  }
+
+  private function assertValidDocx(string $templatePath): void
+  {
+      if (!is_file($templatePath)) {
+          throw new \RuntimeException('DOCX template not found: ' . $templatePath);
+      }
+
+      $zip = new \ZipArchive();
+      $openResult = $zip->open($templatePath);
+
+      if ($openResult !== true) {
+          $zip->close();
+          throw new \RuntimeException('DOCX template is invalid or unreadable: ' . $templatePath . ' (ZipArchive error: ' . $openResult . ')');
+      }
+
+      $hasDocumentXml = $zip->locateName('word/document.xml') !== false;
+      $zip->close();
+
+      if (!$hasDocumentXml) {
+          throw new \RuntimeException('DOCX template is missing word/document.xml: ' . $templatePath);
+      }
+  }
+
   private function fillTemplateAndSave(string $templatePath, array $values, string $destinationPath): void
 {
+    $this->assertValidDocx($templatePath);
+
     $processor = new TemplateProcessor($templatePath);
     foreach ($values as $key => $val) {
 
