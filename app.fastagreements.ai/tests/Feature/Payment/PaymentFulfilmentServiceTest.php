@@ -66,6 +66,12 @@ class PaymentFulfilmentServiceTest extends TestCase
         $this->assertNotNull($invoice);
         $this->assertEquals(399.00, (float) $invoice->amount);
         $this->assertSame('paid', $invoice->payment_status);
+        $this->assertSame('online', $invoice->payment_method);
+
+        // remaining_agreements defaults to 0 in this schema; a time-based
+        // plan must write NULL explicitly, or a monthly subscriber reads as
+        // an exhausted quota.
+        $this->assertNull(CustomerSubscription::where('customer_id', $customer)->value('remaining_agreements'));
     }
 
     public function test_it_marks_the_order_paid_and_records_the_payment_id(): void
@@ -80,14 +86,32 @@ class PaymentFulfilmentServiceTest extends TestCase
         $this->assertNotNull($fresh->fulfilled_at);
     }
 
-    /** The callback and the webhook both land routinely. */
+    /**
+     * The callback and the webhook both land routinely.
+     *
+     * The second call deliberately reuses the STALE $order variable (still
+     * carrying status = created in memory), not ->fresh(). That is the only
+     * way this test can falsify a broken in-memory idempotency check ("if
+     * ($order->status === PAID) return $order" against the passed-in model) —
+     * a re-fetched instance would already read paid and would pass even
+     * against the original, unlocked implementation.
+     *
+     * NOTE on what this does and does not prove: under DatabaseTransactions
+     * the whole test runs inside an outer transaction, so fulfil()'s
+     * DB::transaction() degrades to a SAVEPOINT and lockForUpdate() never
+     * actually contends with a concurrent connection. This test proves the
+     * code re-reads and re-checks the order's persisted status before
+     * writing; it does not exercise real concurrent-fulfilment locking.
+     * That guarantee is verified by inspection of the lockForUpdate() call,
+     * not by this suite.
+     */
     public function test_fulfilling_twice_produces_exactly_one_subscription_and_invoice(): void
     {
         $customer = $this->makeCustomer();
         $order = $this->makeOrder($customer, $this->makePlan());
 
         $this->service()->fulfil($order, 'pay_123');
-        $this->service()->fulfil($order->fresh(), 'pay_123');
+        $this->service()->fulfil($order, 'pay_123');
 
         $this->assertSame(1, CustomerSubscription::where('customer_id', $customer)->count());
         $this->assertSame(1, SubscriptionInvoice::where('payment_order_id', $order->id)->count());
@@ -208,12 +232,18 @@ class PaymentFulfilmentServiceTest extends TestCase
         $this->assertSame(0, CustomerSubscription::where('customer_id', $customer)->count());
     }
 
+    /**
+     * markFailed() is called with the STALE $order (pre-fulfilment, still
+     * status = created in memory) so the test can only pass if the service
+     * re-reads the persisted row before writing — see the note on the
+     * idempotency test above.
+     */
     public function test_a_paid_order_cannot_be_marked_failed(): void
     {
         $order = $this->makeOrder($this->makeCustomer(), $this->makePlan());
         $this->service()->fulfil($order, 'pay_1');
 
-        $this->service()->markFailed($order->fresh(), 'late failure webhook');
+        $this->service()->markFailed($order, 'late failure webhook');
 
         $this->assertSame(PaymentOrder::STATUS_PAID, $order->fresh()->status);
     }
