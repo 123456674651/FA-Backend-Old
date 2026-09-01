@@ -90,6 +90,25 @@
                                         @enderror
                                     </div>
 
+                                    <div class="col-md-6">
+                                        <label class="form-label">OTP Coverage</label>
+                                        <select name="otp_mode" class="form-control">
+                                            <option value="" {{ old('otp_mode', $plan->otp_mode ?? '') === '' ? 'selected' : '' }}>
+                                                Covers both (with and without OTP)</option>
+                                            <option value="with_otp" {{ old('otp_mode', $plan->otp_mode ?? '') === 'with_otp' ? 'selected' : '' }}>
+                                                With OTP only</option>
+                                            <option value="without_otp" {{ old('otp_mode', $plan->otp_mode ?? '') === 'without_otp' ? 'selected' : '' }}>
+                                                Without OTP only</option>
+                                        </select>
+                                        <small class="text-muted">
+                                            A "With OTP only" plan also covers agreements created without OTP.
+                                            A "Without OTP only" plan does not cover OTP agreements.
+                                        </small>
+                                        @error('otp_mode')
+                                            <span class="text-danger">{{ $message }}</span>
+                                        @enderror
+                                    </div>
+
                                     <div class="col-12">
                                         <label class="form-label">Features</label>
                                         <textarea name="features"

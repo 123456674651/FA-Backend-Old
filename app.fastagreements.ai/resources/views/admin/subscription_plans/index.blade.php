@@ -39,6 +39,7 @@
                                     <th>Plan Name</th>
                                     <th>Price</th>
                                     <th>Duration</th>
+                                    <th>OTP Coverage</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
@@ -85,6 +86,13 @@
                     {
                         data: 'duration',
                         name: 'duration',
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center'
+                    },
+                    {
+                        data: 'otp_mode',
+                        name: 'otp_mode',
                         orderable: false,
                         searchable: false,
                         className: 'text-center'

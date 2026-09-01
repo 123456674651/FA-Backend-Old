@@ -32,6 +32,13 @@ class SubscriptionPlanController extends Controller
             ->addColumn('agreement_limit', function ($plan) {
                 return $plan->agreement_limit ?? 'N/A';
             })
+            ->addColumn('otp_mode', function ($plan) {
+                return match ($plan->otp_mode) {
+                    'with_otp' => 'With OTP',
+                    'without_otp' => 'Without OTP',
+                    default => 'Both',
+                };
+            })
             ->addColumn('created_at', function ($plan) {
                 return $plan->created_at ? $plan->created_at->format('Y-m-d') : 'N/A';
             })
@@ -79,9 +86,10 @@ class SubscriptionPlanController extends Controller
             'name'            => 'required|string|max:255',
             'price'           => 'required|numeric',
             'duration_type'   => 'required|in:monthly,yearly,days,per_agreement,lifetime',
-            'duration_value'  => 'required|integer|min:1',
+            'duration_value'  => 'nullable|required_unless:duration_type,per_agreement,lifetime|integer|min:1',
             'agreement_limit' => 'nullable|integer|min:0',
             'validity_days'   => 'nullable|integer|min:0',
+            'otp_mode'        => 'nullable|in:' . SubscriptionPlan::OTP_WITH . ',' . SubscriptionPlan::OTP_WITHOUT,
             'is_active'       => 'nullable|boolean',
         ]);
 
@@ -89,9 +97,13 @@ class SubscriptionPlanController extends Controller
             'name'            => $request->name,
             'price'           => $request->price,
             'duration_type'   => $request->duration_type,
-            'duration_value'  => $request->duration_value,
+            // The column is NOT NULL in the schema; per_agreement/lifetime
+            // plans don't use this value (see SubscriptionPlan::resolveEndDate),
+            // so 0 is a safe placeholder when none was submitted.
+            'duration_value'  => $request->duration_value ?? 0,
             'agreement_limit' => $request->agreement_limit,
             'validity_days'   => $request->validity_days,
+            'otp_mode'        => $request->input('otp_mode') ?: null,
             'features'        => $request->features,
             'is_active'       => $request->is_active ?? 0,
         ]);
@@ -120,9 +132,10 @@ class SubscriptionPlanController extends Controller
             'name'            => 'required|string|max:255',
             'price'           => 'required|numeric',
             'duration_type'   => 'required|in:monthly,yearly,days,per_agreement,lifetime',
-            'duration_value'  => 'required|integer|min:1',
+            'duration_value'  => 'nullable|required_unless:duration_type,per_agreement,lifetime|integer|min:1',
             'agreement_limit' => 'nullable|integer|min:0',
             'validity_days'   => 'nullable|integer|min:0',
+            'otp_mode'        => 'nullable|in:' . SubscriptionPlan::OTP_WITH . ',' . SubscriptionPlan::OTP_WITHOUT,
             'is_active'       => 'nullable|boolean',
         ]);
 
@@ -131,9 +144,10 @@ class SubscriptionPlanController extends Controller
             'name'            => $request->name,
             'price'           => $request->price,
             'duration_type'   => $request->duration_type,
-            'duration_value'  => $request->duration_value,
+            'duration_value'  => $request->duration_value ?? 0,
             'agreement_limit' => $request->agreement_limit,
             'validity_days'   => $request->validity_days,
+            'otp_mode'        => $request->input('otp_mode') ?: null,
             'features'        => $request->features,
             'is_active'       => $request->is_active ?? 0,
         ]);
