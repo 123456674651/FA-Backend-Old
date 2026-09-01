@@ -5,6 +5,9 @@ namespace App\Providers;
 use App\Models\Customer;
 use App\Services\Auth\JwtService;
 use App\Services\Auth\JwtVerificationException;
+use App\Services\Payment\PaymentVerificationService;
+use App\Services\Payment\RazorpayApiGateway;
+use App\Services\Payment\RazorpayGateway;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\URL;
@@ -17,7 +20,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(RazorpayGateway::class, fn () => new RazorpayApiGateway(
+            (string) config('services.razorpay.key_id'),
+            (string) config('services.razorpay.key_secret'),
+        ));
+
+        $this->app->bind(PaymentVerificationService::class, fn () => new PaymentVerificationService(
+            (string) config('services.razorpay.key_secret'),
+            (string) config('services.razorpay.webhook_secret'),
+        ));
     }
 
     /**
