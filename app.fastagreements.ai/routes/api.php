@@ -185,7 +185,10 @@ Route::middleware('auth.jwt')->group(function () {
     Route::get('subscription/status/{customer_id}', [SubscriptionApiController::class, 'status']);
     Route::post('payment/order', [PaymentApiController::class, 'createOrder']);
     Route::post('payment/verify', [PaymentApiController::class, 'verify']);
-    Route::post('subscription/renew', [SubscriptionApiController::class, 'renew']);
+    // `subscription/renew` was removed here. It activated a plan and wrote a
+    // paid invoice on the client's say-so — no order, no signature, nothing
+    // tying it to a payment — so any caller could grant themselves any plan
+    // for free. Purchases now go through payment/order + payment/verify above.
     Route::get('subscription-invoices/pdf-url/{id}', [InvoiceController::class, 'getInvoicePdfUrl']);
     Route::get('subscription-invoices/view/{id}', [InvoiceController::class, 'viewPdf']);
     Route::get('subscription-invoices/download/{id}', [InvoiceController::class, 'downloadPdf']);

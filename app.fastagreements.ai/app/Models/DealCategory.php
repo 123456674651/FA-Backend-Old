@@ -19,10 +19,6 @@ class DealCategory extends Model
         'category_image',
         'is_active',
         'deal_price',
-        // Per-tier pricing. Both optional — deal_price stays the fallback for
-        // any category that has never been given a split price.
-        'price_with_otp',
-        'price_without_otp',
         'is_on_interest',
         'description',
         'parent_id'
