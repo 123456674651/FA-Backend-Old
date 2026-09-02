@@ -29,14 +29,31 @@ class PaymentApiController extends Controller
     public function createOrder(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'subscription_plan_id' => 'required|integer',
-            'otp_mode' => 'nullable|in:' . SubscriptionPlan::OTP_WITH . ',' . SubscriptionPlan::OTP_WITHOUT,
+            'purpose' => 'nullable|in:agreement',
+            'subscription_plan_id' => 'required_without:purpose|integer',
+            'otp_mode' => 'required_if:purpose,agreement|nullable|in:'
+                . SubscriptionPlan::OTP_WITH . ',' . SubscriptionPlan::OTP_WITHOUT,
         ]);
 
         $customerId = (int) $request->user()->id;
+        $otpMode = $data['otp_mode'] ?? null;
 
         try {
-            $result = $this->orders->createFor($customerId, (int) $data['subscription_plan_id'], $data['otp_mode'] ?? null);
+            // For an agreement purchase the client states intent, not a plan —
+            // it must not have to know which tier maps to which plan id.
+            if (($data['purpose'] ?? null) === 'agreement') {
+                // required_if guarantees this, but assert rather than let a
+                // null coerce to "" and silently resolve the wrong plan.
+                if ($otpMode === null) {
+                    return ApiResponse::error(422, 'PLAN_UNAVAILABLE', 'An agreement purchase must name its OTP tier.');
+                }
+
+                $planId = $this->orders->resolveAgreementPlan($otpMode)->id;
+            } else {
+                $planId = (int) $data['subscription_plan_id'];
+            }
+
+            $result = $this->orders->createFor($customerId, $planId, $otpMode);
         } catch (PaymentException $e) {
             return ApiResponse::error(422, 'PLAN_UNAVAILABLE', $e->getMessage());
         } catch (PaymentGatewayException $e) {

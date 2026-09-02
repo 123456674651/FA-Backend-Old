@@ -5,6 +5,7 @@ namespace Tests\Feature\Payment;
 use App\Models\CustomerSubscription;
 use App\Models\PaymentOrder;
 use App\Models\SubscriptionInvoice;
+use App\Models\SubscriptionPlan;
 use App\Services\Auth\JwtService;
 use App\Services\Payment\RazorpayGateway;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -252,5 +253,106 @@ class PaymentApiTest extends TestCase
         $this->actingAsCustomer($customer)->postJson('/api/payment/verify', $payload)->assertOk();
 
         $this->assertSame(1, SubscriptionInvoice::where('customer_id', $customer)->count());
+    }
+
+    private function makePerAgreementPlan(?string $otpMode, float $price): int
+    {
+        return DB::table('subscription_plans')->insertGetId([
+            'name' => 'Per Agreement ' . ($otpMode ?? 'both'),
+            'price' => $price,
+            'duration_type' => 'per_agreement',
+            'duration_value' => 1,
+            'agreement_limit' => 1,
+            'otp_mode' => $otpMode,
+            'is_active' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    public function test_an_agreement_purpose_resolves_the_matching_tier_plan(): void
+    {
+        $this->makePerAgreementPlan(SubscriptionPlan::OTP_WITHOUT, 15.00);
+        $this->makePerAgreementPlan(SubscriptionPlan::OTP_WITH, 20.00);
+
+        $this->actingAsCustomer($this->makeCustomer())
+            ->postJson('/api/payment/order', [
+                'purpose' => 'agreement',
+                'otp_mode' => SubscriptionPlan::OTP_WITH,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.amount', 2000);
+    }
+
+    public function test_an_agreement_purpose_picks_the_cheaper_tier_when_asked(): void
+    {
+        $this->makePerAgreementPlan(SubscriptionPlan::OTP_WITHOUT, 15.00);
+        $this->makePerAgreementPlan(SubscriptionPlan::OTP_WITH, 20.00);
+
+        $this->actingAsCustomer($this->makeCustomer())
+            ->postJson('/api/payment/order', [
+                'purpose' => 'agreement',
+                'otp_mode' => SubscriptionPlan::OTP_WITHOUT,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.amount', 1500);
+    }
+
+    /** A NULL-tier plan covers both, and is used when no exact-tier plan exists. */
+    public function test_it_falls_back_to_a_null_tier_per_agreement_plan(): void
+    {
+        $this->makePerAgreementPlan(null, 18.00);
+
+        $this->actingAsCustomer($this->makeCustomer())
+            ->postJson('/api/payment/order', [
+                'purpose' => 'agreement',
+                'otp_mode' => SubscriptionPlan::OTP_WITH,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.amount', 1800);
+    }
+
+    /** An exact-tier plan wins over a NULL-tier one. */
+    public function test_an_exact_tier_plan_beats_the_null_tier_fallback(): void
+    {
+        $this->makePerAgreementPlan(null, 18.00);
+        $this->makePerAgreementPlan(SubscriptionPlan::OTP_WITH, 20.00);
+
+        $this->actingAsCustomer($this->makeCustomer())
+            ->postJson('/api/payment/order', [
+                'purpose' => 'agreement',
+                'otp_mode' => SubscriptionPlan::OTP_WITH,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.amount', 2000);
+    }
+
+    public function test_an_inactive_per_agreement_plan_is_not_resolved(): void
+    {
+        $id = $this->makePerAgreementPlan(SubscriptionPlan::OTP_WITH, 20.00);
+        DB::table('subscription_plans')->where('id', $id)->update(['is_active' => 0]);
+
+        $this->actingAsCustomer($this->makeCustomer())
+            ->postJson('/api/payment/order', [
+                'purpose' => 'agreement',
+                'otp_mode' => SubscriptionPlan::OTP_WITH,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'PLAN_UNAVAILABLE');
+    }
+
+    public function test_an_agreement_purpose_requires_an_otp_mode(): void
+    {
+        $this->actingAsCustomer($this->makeCustomer())
+            ->postJson('/api/payment/order', ['purpose' => 'agreement'])
+            ->assertStatus(422);
+    }
+
+    /** The existing plan-id form must keep working unchanged. */
+    public function test_a_plan_id_request_still_works(): void
+    {
+        $this->actingAsCustomer($this->makeCustomer())
+            ->postJson('/api/payment/order', ['subscription_plan_id' => $this->makePlan()])
+            ->assertOk()
+            ->assertJsonPath('data.amount', 39900);
     }
 }
