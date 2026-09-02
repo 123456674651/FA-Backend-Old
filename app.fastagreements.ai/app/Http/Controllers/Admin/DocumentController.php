@@ -8,10 +8,85 @@ use App\Models\Document;
 use App\Models\DealCategory;
 use App\Models\Language;
 use App\Models\CategoryAttribute;
+use App\Services\WordDocumentConverter;
+use Illuminate\Http\File;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class DocumentController extends Controller
 {
+    /**
+     * Templates are always stored as .docx because every consumer — variable
+     * extraction, the admin preview, and PhpWord's TemplateProcessor — reads
+     * the OOXML zip. A legacy .doc is converted on the way in rather than
+     * renamed, which is what used to break these uploads.
+     */
+    private const TEMPLATE_EXTENSION = 'docx';
+
+    /**
+     * What libmagic may report for a Word file. It is deliberately loose —
+     * different libmagic builds call a Word 97-2003 binary msword,
+     * vnd.ms-office, CDFV2 or plain octet-stream — because the real content
+     * gate is WordDocumentConverter, which insists on an OOXML zip or an
+     * OLE2/RTF container before anything is stored.
+     */
+    private const TEMPLATE_MIME_TYPES = [
+        'application/msword',
+        'application/vnd.ms-office',
+        'application/vnd.ms-word',
+        'application/x-msword',
+        'application/x-ole-storage',
+        'application/CDFV2',
+        'application/rtf',
+        'text/rtf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/zip',
+        'application/octet-stream',
+    ];
+
+    public function __construct(private readonly WordDocumentConverter $converter)
+    {
+    }
+
+    /** @return array<int, string> */
+    private static function templateRules(bool $required): array
+    {
+        return [
+            $required ? 'required' : 'nullable',
+            'file',
+            'extensions:doc,docx',
+            'mimetypes:' . implode(',', self::TEMPLATE_MIME_TYPES),
+            'max:10240',
+        ];
+    }
+
+    /**
+     * Store an uploaded template as a valid .docx, converting a legacy .doc.
+     *
+     * @throws ValidationException when the upload is not a readable Word file
+     */
+    private function storeTemplate(UploadedFile $upload, string $folderPath, string $fileName): void
+    {
+        $source = $upload->getRealPath();
+
+        try {
+            $docx = $this->converter->ensureDocx($source);
+        } catch (\RuntimeException $e) {
+            throw ValidationException::withMessages(['document' => $e->getMessage()]);
+        }
+
+        try {
+            if (Storage::putFileAs($folderPath, new File($docx), $fileName) === false) {
+                throw ValidationException::withMessages([
+                    'document' => 'The document could not be saved on the server. Please try again.',
+                ]);
+            }
+        } finally {
+            $this->converter->discard($docx);
+        }
+    }
+
     public function index()
     {
         $documents = Document::with('category', 'language')->get();
@@ -28,7 +103,7 @@ class DocumentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'document'    => 'required|mimes:doc,docx|max:10240',
+            'document'    => self::templateRules(true),
             'category_id' => 'required|exists:deal_categories,id',
             'language_id' => 'required|exists:languages,id',
         ]);
@@ -42,15 +117,12 @@ class DocumentController extends Controller
             Storage::makeDirectory($folderPath);
         }
 
-        $fileName = $category->category_name . '_' . $language->language_name . '.docx';
+        $fileName = $category->category_name . '_' . $language->language_name . '.' . self::TEMPLATE_EXTENSION;
         $fullPath = $folderPath . '/' . $fileName;
 
-        // Replace if exists
-        if (Storage::exists($fullPath)) {
-            Storage::delete($fullPath);
-        }
-
-        $request->file('document')->storeAs($folderPath, $fileName);
+        // Overwrites any existing template, and only once conversion has
+        // succeeded — a rejected .doc leaves the working template in place.
+        $this->storeTemplate($request->file('document'), $folderPath, $fileName);
 
         Document::updateOrCreate(
             ['category_id' => $request->category_id, 'language_id' => $request->language_id],
@@ -63,7 +135,7 @@ class DocumentController extends Controller
     public function uploadDocx(Request $request)
     {
         $request->validate([
-            'document'        => 'required|mimes:doc,docx|max:10240',
+            'document'        => self::templateRules(true),
             'category_id'     => 'required|exists:deal_categories,id',
             'sub_category_id' => 'nullable|exists:deal_categories,id',
             'language_id'     => 'required|exists:languages,id',
@@ -83,11 +155,11 @@ class DocumentController extends Controller
             $parent     = DealCategory::find($category->parent_id);
             $parentName = $parent ? $parent->category_name : 'General';
             $folderPath = "uploads/{$parentName}/{$category->category_name}/{$language->language_name}";
-            $fileName   = $category->category_name . '_' . $language->language_name . '.docx';
         } else {
             $folderPath = "uploads/{$category->category_name}/{$language->language_name}";
-            $fileName   = $category->category_name . '_' . $language->language_name . '.docx';
         }
+
+        $fileName = $category->category_name . '_' . $language->language_name . '.' . self::TEMPLATE_EXTENSION;
 
         if (!Storage::exists($folderPath)) {
             Storage::makeDirectory($folderPath);
@@ -95,11 +167,7 @@ class DocumentController extends Controller
 
         $fullPath = $folderPath . '/' . $fileName;
 
-        if (Storage::exists($fullPath)) {
-            Storage::delete($fullPath);
-        }
-
-        $request->file('document')->storeAs($folderPath, $fileName);
+        $this->storeTemplate($request->file('document'), $folderPath, $fileName);
 
         Document::updateOrCreate(
             ['category_id' => $categoryId, 'language_id' => $request->language_id],
@@ -205,7 +273,7 @@ class DocumentController extends Controller
         $request->validate([
             'language_id'     => 'required|exists:languages,id',
             'sub_category_id' => 'nullable|exists:deal_categories,id',
-            'document'        => 'nullable|mimes:doc,docx|max:10240',
+            'document'        => self::templateRules(false),
         ]);
 
         $document   = Document::findOrFail($id);
@@ -223,21 +291,22 @@ class DocumentController extends Controller
             ? "uploads/{$parentName}/{$category->category_name}/{$language->language_name}"
             : "uploads/{$category->category_name}/{$language->language_name}";
 
-        $fileName = $category->category_name . '_' . $language->language_name . '.docx';
+        $fileName = $category->category_name . '_' . $language->language_name . '.' . self::TEMPLATE_EXTENSION;
         $fullPath = $folderPath . '/' . $fileName;
 
         if ($request->hasFile('document')) {
-            // Remove old file if path changed
-            if ($document->file_path && $document->file_path !== $fullPath) {
-                Storage::delete($document->file_path);
-            }
             if (!Storage::exists($folderPath)) {
                 Storage::makeDirectory($folderPath);
             }
-            if (Storage::exists($fullPath)) {
-                Storage::delete($fullPath);
+
+            // Write the new template first: if a legacy .doc turns out to be
+            // unconvertible this throws, and the old file is still there.
+            $this->storeTemplate($request->file('document'), $folderPath, $fileName);
+
+            // Remove the superseded file only once the new one is in place.
+            if ($document->file_path && $document->file_path !== $fullPath) {
+                Storage::delete($document->file_path);
             }
-            $request->file('document')->storeAs($folderPath, $fileName);
         } else {
             $fullPath = $document->file_path; // keep existing
         }
