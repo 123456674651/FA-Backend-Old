@@ -30,6 +30,14 @@ class PaymentOrderService
             throw new PaymentException('Per-agreement plans require an otp_mode.');
         }
 
+        // A without_otp plan cannot deliver with_otp coverage. Caught here,
+        // before any money moves — otherwise the customer is charged, granted
+        // the plan's actual (lower) tier, and then refused at agreement
+        // creation with no refund path.
+        if ($otpMode === SubscriptionPlan::OTP_WITH && $plan->otp_mode === SubscriptionPlan::OTP_WITHOUT) {
+            throw new PaymentException('This plan does not cover OTP-verified agreements.');
+        }
+
         // Only agreement purchases are checked against existing cover. Running
         // this for a subscription would refuse to sell a plan to anyone who
         // already has one, blocking every renewal and upgrade.

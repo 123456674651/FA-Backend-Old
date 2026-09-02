@@ -39,6 +39,26 @@ class AppServiceProvider extends ServiceProvider
         URL::forceScheme('https');
 
         $this->registerCustomerGuard();
+        $this->guardRazorpayConfig();
+    }
+
+    /**
+     * An empty webhook secret makes every webhook fail its signature check —
+     * a blanket 401 on every delivery, operationally indistinguishable from
+     * the version-gate 426 this branch fixes elsewhere. Fail fast at boot in
+     * production rather than silently losing every payment confirmation.
+     */
+    private function guardRazorpayConfig(): void
+    {
+        if (!$this->app->isProduction()) {
+            return;
+        }
+
+        foreach (['key_id', 'key_secret', 'webhook_secret'] as $key) {
+            if (empty(config("services.razorpay.{$key}"))) {
+                throw new \RuntimeException("services.razorpay.{$key} is not configured.");
+            }
+        }
     }
 
     /**

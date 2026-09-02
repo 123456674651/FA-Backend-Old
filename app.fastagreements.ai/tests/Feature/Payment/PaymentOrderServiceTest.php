@@ -198,4 +198,22 @@ class PaymentOrderServiceTest extends TestCase
 
         $this->assertTrue($result['order']->expires_at->isFuture());
     }
+
+    /**
+     * I4: a without_otp plan cannot deliver with_otp coverage. Must be
+     * refused before any money moves — fulfil() snapshots the plan's actual
+     * (lower) tier, so letting this through charges the customer for
+     * coverage the server already knew was useless, with no refund path.
+     */
+    public function test_ordering_a_without_otp_plan_as_with_otp_is_rejected(): void
+    {
+        $this->expectException(PaymentException::class);
+
+        $planId = $this->makePlan([
+            'duration_type' => 'per_agreement', 'price' => 15,
+            'otp_mode' => SubscriptionPlan::OTP_WITHOUT,
+        ]);
+
+        $this->service()->createFor($this->makeCustomer(), $planId, SubscriptionPlan::OTP_WITH);
+    }
 }

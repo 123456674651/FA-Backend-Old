@@ -19,6 +19,7 @@ use App\Http\Controllers\api\RazorpayWebhookController;
 use App\Http\Controllers\api\SliderController;
 use App\Http\Controllers\api\SubscriptionApiController;
 use App\Http\Controllers\Admin\AttributeController;
+use App\Http\Middleware\EnsureMinimumAppVersion;
 use App\Models\Sceme;
 
 /*
@@ -63,7 +64,12 @@ Route::post('attribute/list', [AttributeController::class, 'list'])->name('api.a
 
 // Razorpay's server-to-server callback. Deliberately unauthenticated: the
 // gateway carries no token, and the HMAC over the raw body is the auth.
-Route::post('webhooks/razorpay', [RazorpayWebhookController::class, 'handle']);
+// Exempt from the app-version gate — Razorpay never sends X-App-Version, so
+// the gate would 426 every delivery once MIN_APP_VERSION is set. Throttled
+// since this is an otherwise-public POST that hits the database and log.
+Route::post('webhooks/razorpay', [RazorpayWebhookController::class, 'handle'])
+    ->withoutMiddleware(EnsureMinimumAppVersion::class)
+    ->middleware('throttle:60,1');
 
 Route::get('/languages', [LanguageController::class, 'index'])->name('api.languages.index');
 Route::get('/purposes', [PurposeController::class, 'index'])->name('api.purposes.index');

@@ -161,6 +161,23 @@ class RazorpayWebhookTest extends TestCase
     }
 
     /**
+     * C1: the webhook must be exempt from the app-version gate. Razorpay
+     * never sends X-App-Version, so once MIN_APP_VERSION is set, a version
+     * gate applied to the whole api group would 426 every delivery and the
+     * order would never be fulfilled.
+     */
+    public function test_a_captured_payment_is_fulfilled_even_with_an_impossible_min_app_version(): void
+    {
+        config(['apiauth.min_app_version' => '999.0.0']);
+
+        $order = $this->makeOrder('order_W10');
+
+        $this->send($this->payload('payment.captured', 'order_W10', 'pay_W10'))->assertOk();
+
+        $this->assertSame(PaymentOrder::STATUS_PAID, $order->fresh()->status);
+    }
+
+    /**
      * Guards against computing the HMAC over json_encode($request->all())
      * instead of $request->getContent(). The raw body here is pretty-printed
      * (real whitespace between tokens); json_decode() discards that

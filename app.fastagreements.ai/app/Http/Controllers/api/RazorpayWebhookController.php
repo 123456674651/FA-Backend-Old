@@ -59,17 +59,31 @@ class RazorpayWebhookController extends Controller
             return response()->json(['status' => true, 'message' => 'ignored']);
         }
 
-        match ($event) {
-            'payment.captured' => $this->fulfilment->fulfil($order, $razorpayPaymentId),
-            // Razorpay puts the failure reason directly on the payment entity
-            // (payload.payment.entity.error_description), not nested under an
-            // "error" object.
-            'payment.failed' => $this->fulfilment->markFailed(
-                $order,
-                (string) ($entity['error_description'] ?? 'Payment failed at the gateway.'),
-            ),
-            default => null,
-        };
+        try {
+            match ($event) {
+                'payment.captured' => $this->fulfilment->fulfil($order, $razorpayPaymentId),
+                // Razorpay puts the failure reason directly on the payment entity
+                // (payload.payment.entity.error_description), not nested under an
+                // "error" object.
+                'payment.failed' => $this->fulfilment->markFailed(
+                    $order,
+                    (string) ($entity['error_description'] ?? 'Payment failed at the gateway.'),
+                ),
+                default => null,
+            };
+        } catch (\Throwable $e) {
+            // A 500 here makes Razorpay retry a delivery that will keep
+            // failing the same way forever. Log it for investigation and
+            // acknowledge instead, so a permanently-broken event does not
+            // retry indefinitely.
+            Log::error('Razorpay webhook fulfilment failed.', [
+                'event' => $event,
+                'order_id' => $order->id,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return response()->json(['status' => true, 'message' => 'error logged']);
+        }
 
         return response()->json(['status' => true]);
     }
