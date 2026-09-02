@@ -84,15 +84,25 @@ class AdminCustomerSubscriptionGrantTest extends TestCase
         $this->assertSame(5, $subscription->remaining_agreements);
     }
 
-    public function test_updating_an_admin_granted_subscription_also_sets_remaining_agreements(): void
+    /**
+     * update() must NOT recompute remaining_agreements or otp_mode from the
+     * plan: the edit form doesn't post either, and previously doing so
+     * silently restored a spent credit balance and upgraded a without_otp
+     * subscription to "covers both" on every admin edit.
+     */
+    public function test_updating_a_subscription_does_not_reset_its_credits_or_otp_tier(): void
     {
         $customerId = $this->makeCustomer();
-        $planId = $this->makePlan();
+        $planId = $this->makePlan([
+            'name' => 'Five Pack', 'duration_type' => 'per_agreement',
+            'duration_value' => 0, 'agreement_limit' => 5,
+        ]);
 
         $subscriptionId = DB::table('user_subscriptions')->insertGetId([
             'customer_id' => $customerId, 'subscription_plan_id' => $planId,
-            'start_date' => now(), 'end_date' => now()->addMonth(),
-            'is_active' => 1, 'remaining_agreements' => 0,
+            'start_date' => now(), 'end_date' => now()->addYear(),
+            'is_active' => 1, 'remaining_agreements' => 2,
+            'otp_mode' => 'without_otp',
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
@@ -100,11 +110,13 @@ class AdminCustomerSubscriptionGrantTest extends TestCase
             'customer_id' => $customerId,
             'subscription_plan_id' => $planId,
             'start_date' => now()->toDateString(),
-            'end_date' => now()->addMonth()->toDateString(),
+            // Only the field actually being changed.
+            'end_date' => now()->addYear()->addMonth()->toDateString(),
         ]);
 
-        $this->assertNull(
-            DB::table('user_subscriptions')->where('id', $subscriptionId)->value('remaining_agreements')
-        );
+        $row = DB::table('user_subscriptions')->where('id', $subscriptionId)->first();
+
+        $this->assertSame(2, $row->remaining_agreements);
+        $this->assertSame('without_otp', $row->otp_mode);
     }
 }

@@ -112,17 +112,22 @@ class CustomerSubscriptionController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
-        $plan = SubscriptionPlan::findOrFail($validated['subscription_plan_id']);
+        SubscriptionPlan::findOrFail($validated['subscription_plan_id']);
         $subscription = CustomerSubscription::findOrFail($id);
 
+        // remaining_agreements and otp_mode are deliberately NOT written here.
+        // The edit form doesn't post either: recomputing remaining_agreements
+        // from the plan would restore a spent credit balance for free, and
+        // forcing otp_mode to null would silently upgrade a without_otp
+        // subscription to "covers both" in AgreementEntitlementService. Both
+        // are set once, correctly, in store() when the subscription is
+        // granted; an edit here only touches dates/plan/status.
         $subscription->update([
             'customer_id' => $validated['customer_id'],
             'subscription_plan_id' => $validated['subscription_plan_id'],
             'start_date' => $validated['start_date'],
             'end_date' => $validated['end_date'],
-            'otp_mode' => $validated['otp_mode'] ?? null,
             'is_active' => $validated['is_active'] ?? 1,
-            'remaining_agreements' => $plan->isPerAgreement() ? ($plan->agreement_limit ?? 1) : null,
         ]);
 
         return redirect()->route('customer-subscriptions.index')
