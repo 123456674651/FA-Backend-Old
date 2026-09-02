@@ -76,11 +76,14 @@ class PaymentApiTest extends TestCase
             ->postJson('/api/payment/order', ['subscription_plan_id' => $this->makePlan()])
             ->assertOk()
             ->assertJson([
-                'payment_required' => true,
-                'razorpay_order_id' => 'order_API1',
-                'amount' => 39900,
-                'currency' => 'INR',
-                'key_id' => 'rzp_test_public',
+                'status' => true,
+                'data' => [
+                    'payment_required' => true,
+                    'razorpay_order_id' => 'order_API1',
+                    'amount' => 39900,
+                    'currency' => 'INR',
+                    'key_id' => 'rzp_test_public',
+                ],
             ]);
     }
 
@@ -103,7 +106,7 @@ class PaymentApiTest extends TestCase
                 'price' => 1,
             ])
             ->assertOk()
-            ->assertJson(['amount' => 39900]);
+            ->assertJson(['data' => ['amount' => 39900]]);
 
         $this->assertSame(39900, $this->gateway->createdOrders[0]['amount_paise']);
     }
@@ -129,7 +132,8 @@ class PaymentApiTest extends TestCase
 
         $this->actingAsCustomer($this->makeCustomer())
             ->postJson('/api/payment/order', ['subscription_plan_id' => $this->makePlan()])
-            ->assertStatus(502);
+            ->assertStatus(502)
+            ->assertJson(['status' => false, 'code' => 'GATEWAY_UNAVAILABLE']);
 
         $this->assertSame(0, PaymentOrder::count());
     }
@@ -148,7 +152,8 @@ class PaymentApiTest extends TestCase
     {
         $this->actingAsCustomer($this->makeCustomer())
             ->postJson('/api/payment/order', ['subscription_plan_id' => 99999999])
-            ->assertStatus(422);
+            ->assertStatus(422)
+            ->assertJson(['status' => false, 'code' => 'PLAN_UNAVAILABLE']);
     }
 
     public function test_a_missing_plan_id_is_rejected(): void
@@ -171,7 +176,7 @@ class PaymentApiTest extends TestCase
             'razorpay_order_id' => 'order_V1',
             'razorpay_payment_id' => 'pay_V1',
             'razorpay_signature' => $this->signature('order_V1', 'pay_V1'),
-        ])->assertOk()->assertJson(['status' => 'success']);
+        ])->assertOk()->assertJson(['status' => true]);
 
         $this->assertSame(
             PaymentOrder::STATUS_PAID,
@@ -183,8 +188,8 @@ class PaymentApiTest extends TestCase
         $subscription = CustomerSubscription::where('payment_order_id', $order->id)->first();
 
         $this->assertNotNull($subscription);
-        $this->assertSame($subscription->id, $response->json('subscription_id'));
-        $this->assertNotSame($order->subscription_plan_id, $response->json('subscription_id'));
+        $this->assertSame($subscription->id, $response->json('data.subscription_id'));
+        $this->assertNotSame($order->subscription_plan_id, $response->json('data.subscription_id'));
     }
 
     public function test_verify_rejects_a_forged_signature_and_grants_nothing(): void
@@ -200,7 +205,7 @@ class PaymentApiTest extends TestCase
             'razorpay_order_id' => 'order_V2',
             'razorpay_payment_id' => 'pay_V2',
             'razorpay_signature' => hash_hmac('sha256', 'order_V2|pay_V2', 'attacker_secret'),
-        ])->assertStatus(422);
+        ])->assertStatus(422)->assertJson(['status' => false, 'code' => 'SIGNATURE_INVALID']);
 
         $this->assertSame(
             PaymentOrder::STATUS_CREATED,
@@ -223,7 +228,7 @@ class PaymentApiTest extends TestCase
             'razorpay_order_id' => 'order_V3',
             'razorpay_payment_id' => 'pay_V3',
             'razorpay_signature' => $this->signature('order_V3', 'pay_V3'),
-        ])->assertStatus(404);
+        ])->assertStatus(404)->assertJson(['status' => false, 'code' => 'ORDER_NOT_FOUND']);
 
         $this->assertSame(0, SubscriptionInvoice::where('customer_id', $attacker)->count());
     }

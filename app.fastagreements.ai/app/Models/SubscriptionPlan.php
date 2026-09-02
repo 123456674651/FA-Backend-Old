@@ -17,6 +17,7 @@ class SubscriptionPlan extends Model
         'duration_value',
         'otp_mode',
         'agreement_limit',
+        'validity_days',
         'features',
         'is_active'
     ];
@@ -24,19 +25,6 @@ class SubscriptionPlan extends Model
     protected $casts = [
         'features' => 'array'
     ];
-
-    public function calculateEndDate($startDate)
-    {
-        return match ($this->duration_type) {
-            'daily'   => $startDate->copy()->addDays($this->duration_value),
-            'monthly' => $startDate->copy()->addMonths($this->duration_value),
-            'yearly'  => $startDate->copy()->addYears($this->duration_value),
-            'lifetime'  => null,
-            'per_agreement' => null,
-
-            default => throw new \Exception('Invalid duration type'),
-        };
-    }
 
     /**
      * The plan price as integer paise.

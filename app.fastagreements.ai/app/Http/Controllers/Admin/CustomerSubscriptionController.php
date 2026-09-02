@@ -63,14 +63,30 @@ class CustomerSubscriptionController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'customer_id' => 'required',
             'subscription_plan_id' => 'required',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'otp_mode' => 'nullable|in:' . SubscriptionPlan::OTP_WITH . ',' . SubscriptionPlan::OTP_WITHOUT,
+            'is_active' => 'nullable|boolean',
         ]);
 
-        CustomerSubscription::create($request->all());
+        $plan = SubscriptionPlan::findOrFail($validated['subscription_plan_id']);
+
+        CustomerSubscription::create([
+            'customer_id' => $validated['customer_id'],
+            'subscription_plan_id' => $validated['subscription_plan_id'],
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'],
+            'otp_mode' => $validated['otp_mode'] ?? null,
+            'is_active' => $validated['is_active'] ?? 1,
+            // Same rule PaymentFulfilmentService::fulfil() applies: a
+            // per_agreement plan grants its limit (defaulting to 1), a
+            // time-based plan grants unlimited (null), never the column's
+            // DEFAULT 0 — which AgreementEntitlementService reads as exhausted.
+            'remaining_agreements' => $plan->isPerAgreement() ? ($plan->agreement_limit ?? 1) : null,
+        ]);
 
         return redirect()->route('customer-subscriptions.index')
             ->with('success', 'Subscription added successfully');
@@ -87,15 +103,27 @@ class CustomerSubscriptionController extends Controller
 
     public function update(Request $request, $id)
     {
-        $request->validate([
+        $validated = $request->validate([
             'customer_id' => 'required',
             'subscription_plan_id' => 'required',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'otp_mode' => 'nullable|in:' . SubscriptionPlan::OTP_WITH . ',' . SubscriptionPlan::OTP_WITHOUT,
+            'is_active' => 'nullable|boolean',
         ]);
 
+        $plan = SubscriptionPlan::findOrFail($validated['subscription_plan_id']);
         $subscription = CustomerSubscription::findOrFail($id);
-        $subscription->update($request->all());
+
+        $subscription->update([
+            'customer_id' => $validated['customer_id'],
+            'subscription_plan_id' => $validated['subscription_plan_id'],
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'],
+            'otp_mode' => $validated['otp_mode'] ?? null,
+            'is_active' => $validated['is_active'] ?? 1,
+            'remaining_agreements' => $plan->isPerAgreement() ? ($plan->agreement_limit ?? 1) : null,
+        ]);
 
         return redirect()->route('customer-subscriptions.index')
             ->with('success', 'Subscription updated successfully');

@@ -85,9 +85,9 @@ class SubscriptionPlanController extends Controller
         $request->validate([
             'name'            => 'required|string|max:255',
             'price'           => 'required|numeric',
-            'duration_type'   => 'required|in:monthly,yearly,days,per_agreement,lifetime',
+            'duration_type'   => 'required|in:monthly,yearly,per_agreement,lifetime',
             'duration_value'  => 'nullable|required_unless:duration_type,per_agreement,lifetime|integer|min:1',
-            'agreement_limit' => 'nullable|integer|min:0',
+            'agreement_limit' => 'nullable|integer|min:0|prohibited_unless:duration_type,per_agreement',
             'validity_days'   => 'nullable|integer|min:0',
             'otp_mode'        => 'nullable|in:' . SubscriptionPlan::OTP_WITH . ',' . SubscriptionPlan::OTP_WITHOUT,
             'is_active'       => 'nullable|boolean',
@@ -131,9 +131,9 @@ class SubscriptionPlanController extends Controller
         $request->validate([
             'name'            => 'required|string|max:255',
             'price'           => 'required|numeric',
-            'duration_type'   => 'required|in:monthly,yearly,days,per_agreement,lifetime',
+            'duration_type'   => 'required|in:monthly,yearly,per_agreement,lifetime',
             'duration_value'  => 'nullable|required_unless:duration_type,per_agreement,lifetime|integer|min:1',
-            'agreement_limit' => 'nullable|integer|min:0',
+            'agreement_limit' => 'nullable|integer|min:0|prohibited_unless:duration_type,per_agreement',
             'validity_days'   => 'nullable|integer|min:0',
             'otp_mode'        => 'nullable|in:' . SubscriptionPlan::OTP_WITH . ',' . SubscriptionPlan::OTP_WITHOUT,
             'is_active'       => 'nullable|boolean',
