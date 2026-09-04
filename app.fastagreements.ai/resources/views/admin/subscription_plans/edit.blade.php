@@ -51,7 +51,7 @@
 
                                     <div class="col-md-6">
                                         <label class="form-label">Duration Type</label>
-                                        <select name="duration_type" class="form-control">
+                                        <select name="duration_type" id="duration_type" class="form-control" onchange="toggleAgreementLimit(this.value)">
                                             <option value="">Select Duration Type</option>
 
                                             <option value="monthly" {{ old('duration_type', $plan->duration_type) == 'monthly' ? 'selected' : '' }}>Monthly</option>
@@ -72,10 +72,12 @@
                                         @enderror
                                     </div>
 
-                                    <div class="col-md-6">
+                                    <div class="col-md-6" id="agreement_limit_wrapper" style="{{ old('duration_type', $plan->duration_type) === 'per_agreement' ? '' : 'display:none;' }}">
                                         <label class="form-label">Agreement Limit</label>
-                                        <input type="number" name="agreement_limit" class="form-control"
-                                            value="{{ old('agreement_limit', $plan->agreement_limit) }}">
+                                        <input type="number" name="agreement_limit" id="agreement_limit" class="form-control"
+                                            value="{{ old('agreement_limit', $plan->agreement_limit) }}"
+                                            {{ old('duration_type', $plan->duration_type) === 'per_agreement' ? '' : 'disabled' }}>
+                                        <small class="text-muted">Only applies to Per Agreement plans.</small>
                                         @error('agreement_limit')
                                             <span class="text-danger">{{ $message }}</span>
                                         @enderror
@@ -86,6 +88,25 @@
                                         <input type="number" name="validity_days" class="form-control"
                                             value="{{ old('validity_days', $plan->validity_days) }}">
                                         @error('validity_days')
+                                            <span class="text-danger">{{ $message }}</span>
+                                        @enderror
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">OTP Coverage</label>
+                                        <select name="otp_mode" class="form-control">
+                                            <option value="" {{ old('otp_mode', $plan->otp_mode ?? '') === '' ? 'selected' : '' }}>
+                                                Covers both (with and without OTP)</option>
+                                            <option value="with_otp" {{ old('otp_mode', $plan->otp_mode ?? '') === 'with_otp' ? 'selected' : '' }}>
+                                                With OTP only</option>
+                                            <option value="without_otp" {{ old('otp_mode', $plan->otp_mode ?? '') === 'without_otp' ? 'selected' : '' }}>
+                                                Without OTP only</option>
+                                        </select>
+                                        <small class="text-muted">
+                                            A "With OTP only" plan also covers agreements created without OTP.
+                                            A "Without OTP only" plan does not cover OTP agreements.
+                                        </small>
+                                        @error('otp_mode')
                                             <span class="text-danger">{{ $message }}</span>
                                         @enderror
                                     </div>
@@ -127,4 +148,22 @@
         </section>
 
     </main>
+
+    <script>
+        function toggleAgreementLimit(durationType) {
+            var wrapper = document.getElementById('agreement_limit_wrapper');
+            var input = document.getElementById('agreement_limit');
+            var isPerAgreement = durationType === 'per_agreement';
+
+            wrapper.style.display = isPerAgreement ? '' : 'none';
+            input.disabled = !isPerAgreement;
+            if (!isPerAgreement) {
+                input.value = '';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            toggleAgreementLimit(document.getElementById('duration_type').value);
+        });
+    </script>
 @endsection

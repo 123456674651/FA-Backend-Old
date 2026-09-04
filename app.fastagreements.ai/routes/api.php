@@ -15,9 +15,11 @@ use App\Http\Controllers\api\PaymentApiController;
 use App\Http\Controllers\api\PDFController;
 use App\Http\Controllers\api\PhpWordController;
 use App\Http\Controllers\api\PurposeController;
+use App\Http\Controllers\api\RazorpayWebhookController;
 use App\Http\Controllers\api\SliderController;
 use App\Http\Controllers\api\SubscriptionApiController;
 use App\Http\Controllers\Admin\AttributeController;
+use App\Http\Middleware\EnsureMinimumAppVersion;
 use App\Models\Sceme;
 
 /*
@@ -59,6 +61,15 @@ Route::get('auth/exists', [AuthApiController::class, 'exists']);
 Route::get('/deal_categories', [DealCategoryController::class, 'index'])->name('api.dealCategories.index');
 Route::get('/deal_categories/show/{deal_category}', [DealCategoryController::class, 'show'])->name('api.dealCategories.show');
 Route::post('attribute/list', [AttributeController::class, 'list'])->name('api.attribute.list');
+
+// Razorpay's server-to-server callback. Deliberately unauthenticated: the
+// gateway carries no token, and the HMAC over the raw body is the auth.
+// Exempt from the app-version gate — Razorpay never sends X-App-Version, so
+// the gate would 426 every delivery once MIN_APP_VERSION is set. Throttled
+// since this is an otherwise-public POST that hits the database and log.
+Route::post('webhooks/razorpay', [RazorpayWebhookController::class, 'handle'])
+    ->withoutMiddleware(EnsureMinimumAppVersion::class)
+    ->middleware('throttle:60,1');
 
 Route::get('/languages', [LanguageController::class, 'index'])->name('api.languages.index');
 Route::get('/purposes', [PurposeController::class, 'index'])->name('api.purposes.index');
@@ -117,6 +128,8 @@ Route::get('scemelist', function () {
 |--------------------------------------------------------------------------
 */
 
+Route::post('webhooks/razorpay', [RazorpayWebhookController::class, 'handle']);
+
 Route::middleware('auth.jwt')->group(function () {
 
     // Account
@@ -174,7 +187,10 @@ Route::middleware('auth.jwt')->group(function () {
     Route::get('subscription/status/{customer_id}', [SubscriptionApiController::class, 'status']);
     Route::post('payment/order', [PaymentApiController::class, 'createOrder']);
     Route::post('payment/verify', [PaymentApiController::class, 'verify']);
-    Route::post('subscription/renew', [SubscriptionApiController::class, 'renew']);
+    // `subscription/renew` was removed here. It activated a plan and wrote a
+    // paid invoice on the client's say-so — no order, no signature, nothing
+    // tying it to a payment — so any caller could grant themselves any plan
+    // for free. Purchases now go through payment/order + payment/verify above.
     Route::get('subscription-invoices/pdf-url/{id}', [InvoiceController::class, 'getInvoicePdfUrl']);
     Route::get('subscription-invoices/view/{id}', [InvoiceController::class, 'viewPdf']);
     Route::get('subscription-invoices/download/{id}', [InvoiceController::class, 'downloadPdf']);

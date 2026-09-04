@@ -191,6 +191,28 @@ class PaymentFulfilmentServiceTest extends TestCase
         $this->assertSame(1, (int) $credit->remaining_agreements);
     }
 
+    /**
+     * I5: supersede must be tier-aware. A customer holding a with_otp
+     * monthly must not silently lose that OTP coverage just because they
+     * bought a cheaper without_otp monthly afterwards.
+     */
+    public function test_buying_a_without_otp_plan_does_not_deactivate_an_active_with_otp_plan(): void
+    {
+        $customer = $this->makeCustomer();
+        $withOtpPlan = $this->makePlan(['otp_mode' => SubscriptionPlan::OTP_WITH]);
+
+        $this->service()->fulfil($this->makeOrder($customer, $withOtpPlan), 'pay_1');
+
+        $withoutOtpPlan = $this->makePlan(['name' => 'Cheaper', 'otp_mode' => SubscriptionPlan::OTP_WITHOUT]);
+        $this->service()->fulfil($this->makeOrder($customer, $withoutOtpPlan), 'pay_2');
+
+        $this->assertSame(
+            1,
+            (int) CustomerSubscription::where('customer_id', $customer)
+                ->where('subscription_plan_id', $withOtpPlan)->value('is_active')
+        );
+    }
+
     public function test_buying_a_credit_does_not_deactivate_a_running_plan(): void
     {
         $customer = $this->makeCustomer();

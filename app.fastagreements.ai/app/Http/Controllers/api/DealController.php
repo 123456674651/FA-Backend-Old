@@ -79,8 +79,16 @@ class DealController extends Controller
     try {
 
         // ✅ Pagination values
-        $perPage = $request->per_page ?? 10;   // default 10
+        $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
         $page    = $request->page ?? 1;
+        $isDraft = $request->boolean('is_draft');
+
+        if ((int) $request->user()->id !== (int) $id) {
+            return response()->json([
+                'status' => false,
+                'message' => 'You can only view your own agreements.',
+            ], 403);
+        }
 
         // ✅ Fetch paginated agreements
         $agreements = Aggriment::with(['party1', 'party2', 'category'])
@@ -88,6 +96,7 @@ class DealController extends Controller
                 $query->where('party_1_id', $id)
                       ->orWhere('party_2_id', $id);
             })
+            ->where('is_draft', $isDraft)
             ->orderBy('id', 'desc')
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -118,7 +127,6 @@ class DealController extends Controller
 
     } catch (\Throwable $e) {
 
-      dd($e);
         Log::error('PartyWiseAggriments API Error', [
             'party_id' => $id,
             'error'    => $e->getMessage()

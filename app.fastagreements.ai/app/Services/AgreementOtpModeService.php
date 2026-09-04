@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Aggriment;
 use App\Models\AgreementPartyVerification;
 use App\Models\Customer;
-use App\Models\DealCategory;
 use App\Models\PartyPhoneVerification;
 use App\Services\Auth\FirebaseIdTokenVerifier;
 use Carbon\Carbon;
@@ -50,26 +49,6 @@ class AgreementOtpModeService
     public static function modes(): array
     {
         return [self::WITH_OTP, self::WITHOUT_OTP];
-    }
-
-    /**
-     * What this agreement costs under the chosen tier.
-     *
-     * Falls back to the category's flat `deal_price` whenever the per-tier
-     * price is unset, so a category that has never been given split pricing
-     * keeps charging what it always charged.
-     */
-    public function resolvePrice(DealCategory $category, ?string $mode): float
-    {
-        $flat = (float) ($category->deal_price ?? 0);
-
-        $tiered = match ($mode) {
-            self::WITH_OTP => $category->price_with_otp,
-            self::WITHOUT_OTP => $category->price_without_otp,
-            default => null,
-        };
-
-        return $tiered === null ? $flat : (float) $tiered;
     }
 
     // ---------------------------------------------------------------------

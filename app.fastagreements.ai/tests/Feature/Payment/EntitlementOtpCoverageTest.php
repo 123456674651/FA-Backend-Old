@@ -106,4 +106,25 @@ class EntitlementOtpCoverageTest extends TestCase
 
         $this->assertNull($this->service->getEntitlement($customer, SubscriptionPlan::OTP_WITH));
     }
+
+    /**
+     * I3: an active without_otp monthly plan and a spent with_otp
+     * per-agreement credit can now coexist (Task 11's tier-scoped
+     * supersede). The credit, being the higher-id row, must not shadow the
+     * still-active plan underneath it for a plain without_otp agreement.
+     */
+    public function test_a_spent_credit_does_not_shadow_an_active_plan_underneath_it(): void
+    {
+        $customer = $this->makeCustomer();
+
+        // Older row: an active without_otp monthly.
+        $this->giveSubscription($customer, SubscriptionPlan::OTP_WITHOUT);
+
+        // Newer row: a with_otp per-agreement credit, already spent.
+        $this->giveSubscription($customer, SubscriptionPlan::OTP_WITH, 0);
+
+        $entitlement = $this->service->getEntitlement($customer, SubscriptionPlan::OTP_WITHOUT);
+
+        $this->assertNotNull($entitlement);
+    }
 }

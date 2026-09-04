@@ -50,14 +50,16 @@ class AgreementEntitlementService
                 });
             })
             ->orderByDesc('id')
-            ->first();
+            // Picked in PHP, not SQL: remaining_agreements DEFAULTS TO 0 in
+            // this schema, so a `> 0 OR IS NULL` WHERE clause would exclude
+            // legitimate time-based rows that carry 0 rather than NULL. This
+            // also lets a highest-id row that is an exhausted per-agreement
+            // credit be skipped in favour of an older but still-active
+            // time-based plan underneath it, rather than shadowing it.
+            ->get()
+            ->first(fn ($s) => $s->remaining_agreements === null || (int) $s->remaining_agreements > 0);
 
         if ($subscription === null) {
-            return null;
-        }
-
-        // A quota plan is spent once the counter reaches zero. Null is unlimited.
-        if ($subscription->remaining_agreements !== null && (int) $subscription->remaining_agreements <= 0) {
             return null;
         }
 

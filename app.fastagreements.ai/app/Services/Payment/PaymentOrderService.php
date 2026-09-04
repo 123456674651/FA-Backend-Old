@@ -16,6 +16,35 @@ class PaymentOrderService
     }
 
     /**
+     * The plan that sells a single agreement at the requested tier.
+     *
+     * An exact tier match wins; a NULL-tier plan is the fallback because NULL
+     * means "covers both". Resolving server-side keeps plan ids out of the app,
+     * so repricing or re-tiering never needs a client release.
+     *
+     * @throws PaymentException
+     */
+    public function resolveAgreementPlan(string $otpMode): SubscriptionPlan
+    {
+        $plan = SubscriptionPlan::query()
+            ->where('duration_type', 'per_agreement')
+            ->where('is_active', 1)
+            ->where(function ($q) use ($otpMode) {
+                $q->where('otp_mode', $otpMode)->orWhereNull('otp_mode');
+            })
+            // Exact tier first, NULL fallback second.
+            ->orderByRaw('otp_mode IS NULL')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($plan === null) {
+            throw new PaymentException('No pay-per-agreement plan is available for that verification tier.');
+        }
+
+        return $plan;
+    }
+
+    /**
      * @return array{payment_required: bool, order?: PaymentOrder, key_id?: string}
      */
     public function createFor(int $customerId, int $planId, ?string $otpMode): array
@@ -28,6 +57,14 @@ class PaymentOrderService
 
         if ($plan->isPerAgreement() && $otpMode === null) {
             throw new PaymentException('Per-agreement plans require an otp_mode.');
+        }
+
+        // A without_otp plan cannot deliver with_otp coverage. Caught here,
+        // before any money moves — otherwise the customer is charged, granted
+        // the plan's actual (lower) tier, and then refused at agreement
+        // creation with no refund path.
+        if ($otpMode === SubscriptionPlan::OTP_WITH && $plan->otp_mode === SubscriptionPlan::OTP_WITHOUT) {
+            throw new PaymentException('This plan does not cover OTP-verified agreements.');
         }
 
         // Only agreement purchases are checked against existing cover. Running

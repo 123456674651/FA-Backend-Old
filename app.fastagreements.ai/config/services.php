@@ -3,7 +3,12 @@
 return [
 
     'libreoffice' => [
-        'binary' => env('LIBREOFFICE_BINARY', '/usr/bin/libreoffice'),
+        // Used for agreement PDF export and for converting legacy .doc
+        // templates to .docx on upload. The Windows fallback matches
+        // config/doxswap.php so a dev machine works without extra .env setup.
+        'binary' => env('LIBREOFFICE_BINARY', PHP_OS_FAMILY === 'Windows'
+            ? 'C:\Program Files\LibreOffice\program\soffice.exe'
+            : '/usr/bin/libreoffice'),
     ],
 
     'razorpay' => [

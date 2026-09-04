@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\TemplateController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Admin\DocumentController;
 use App\Http\Controllers\Admin\SubscriptionPlanController;
+use App\Http\Controllers\Admin\CustomerSubscriptionController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\ProfileController;
 use App\Http\Controllers\Admin\SubscriptionInvoiceController;
@@ -27,6 +28,10 @@ use App\Http\Controllers\Admin\GstReportController;
 
 
 // Public/Guest Routes
+Route::get('/', function () {
+    return response()->json(['status' => true, 'message' => 'Application is running.']);
+})->name('dashboard.index');
+
 Route::middleware('guest')->group(function () {
     Route::get('admin/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('admin/login', [AuthController::class, 'login']);
@@ -57,9 +62,6 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('admin/logout', [AuthController::class, 'logout'])->name('logout');
-
-       Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
-
 
     // Admin Profile Routes
     Route::get('admin/profile', [ProfileController::class, 'index'])->name('profile.index');
@@ -182,6 +184,7 @@ Route::resource('/documents', DocumentController::class);
     Route::get('documents/preview/{id}', [DocumentController::class, 'preview'])->name('documents.preview');
     Route::delete('documents/delete/{id}', [DocumentController::class, 'destroy'])->name('documents.destroy_explicit');
     Route::resource('subscription-plans', SubscriptionPlanController::class);
+    Route::resource('customer-subscriptions', CustomerSubscriptionController::class);
 
 });
 

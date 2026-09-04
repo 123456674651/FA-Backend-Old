@@ -172,7 +172,7 @@ class DealCategoryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Deal Category created successfully!',
+                'message' => 'Agreement Category created successfully!',
                 'data' => $category
             ], 201); // Created status code
 

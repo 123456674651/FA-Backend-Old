@@ -25,6 +25,14 @@ class PaymentFulfilmentService
         return DB::transaction(function () use ($order, $razorpayPaymentId, $signature) {
             $locked = PaymentOrder::whereKey($order->getKey())->lockForUpdate()->first();
 
+            // The customer row can be deleted out from under an in-flight
+            // order (payment_orders.customer_id cascades on delete); without
+            // this guard a late webhook would fatal into a 500 and Razorpay
+            // would retry forever.
+            if ($locked === null) {
+                return $order;
+            }
+
             // Not an error: the callback and the webhook race by design.
             if ($locked->status === PaymentOrder::STATUS_PAID) {
                 return $locked;
@@ -55,7 +63,10 @@ class PaymentFulfilmentService
                 'customer_subscription_id' => $subscription->id,
                 'payment_order_id' => $locked->id,
                 'invoice_number' => $this->invoiceNumber(),
-                'amount' => $locked->amount_paise / 100,
+                // A string, never a float: money is integer paise, and a
+                // float division here would touch money against this
+                // branch's own constraint.
+                'amount' => number_format($locked->amount_paise / 100, 2, '.', ''),
                 'invoice_date' => Carbon::today(),
                 'payment_status' => 'paid',
                 'payment_method' => 'online',
@@ -80,6 +91,10 @@ class PaymentFulfilmentService
     {
         return DB::transaction(function () use ($order, $reason) {
             $locked = PaymentOrder::whereKey($order->getKey())->lockForUpdate()->first();
+
+            if ($locked === null) {
+                return $order;
+            }
 
             if ($locked->status === PaymentOrder::STATUS_PAID) {
                 return $locked;
@@ -120,6 +135,14 @@ class PaymentFulfilmentService
             ->where('customer_id', $customerId)
             ->where('is_active', 1)
             ->whereIn('subscription_plan_id', $timeBasedPlanIds)
+            // Skip rows the incoming plan cannot cover: a without_otp
+            // purchase must not silently deactivate a with_otp subscription
+            // the customer already paid for and is still within its dates.
+            ->when($plan->otp_mode === SubscriptionPlan::OTP_WITHOUT, function ($query) {
+                $query->where(function ($q) {
+                    $q->whereNull('otp_mode')->orWhere('otp_mode', SubscriptionPlan::OTP_WITHOUT);
+                });
+            })
             ->pluck('id');
 
         if ($supersededIds->isNotEmpty()) {
