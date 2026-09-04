@@ -128,6 +128,8 @@ Route::get('scemelist', function () {
 |--------------------------------------------------------------------------
 */
 
+Route::post('webhooks/razorpay', [RazorpayWebhookController::class, 'handle']);
+
 Route::middleware('auth.jwt')->group(function () {
 
     // Account

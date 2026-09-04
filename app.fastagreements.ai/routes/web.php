@@ -28,6 +28,10 @@ use App\Http\Controllers\Admin\GstReportController;
 
 
 // Public/Guest Routes
+Route::get('/', function () {
+    return response()->json(['status' => true, 'message' => 'Application is running.']);
+})->name('dashboard.index');
+
 Route::middleware('guest')->group(function () {
     Route::get('admin/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('admin/login', [AuthController::class, 'login']);
@@ -58,9 +62,6 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('admin/logout', [AuthController::class, 'logout'])->name('logout');
-
-       Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
-
 
     // Admin Profile Routes
     Route::get('admin/profile', [ProfileController::class, 'index'])->name('profile.index');
