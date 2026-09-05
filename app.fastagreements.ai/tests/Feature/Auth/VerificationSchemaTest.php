@@ -54,4 +54,22 @@ class VerificationSchemaTest extends TestCase
             'used_at' => now(),
         ]);
     }
+
+    public function test_the_msg91_source_can_actually_be_stored(): void
+    {
+        $id = DB::table('agreement_party_verifications')->insertGetId([
+            'agreement_id' => 0,
+            'role' => AgreementPartyVerification::ROLE_GUARANTOR,
+            'position' => 0,
+            'mobile' => '9000009999',
+            'verified_via' => AgreementPartyVerification::VIA_MSG91,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->assertDatabaseHas('agreement_party_verifications', [
+            'id' => $id,
+            'verified_via' => AgreementPartyVerification::VIA_MSG91,
+        ]);
+    }
 }

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -33,6 +34,19 @@ return new class extends Migration
             });
         }
 
+        // `verified_via` is a DB-level ENUM, currently ('firebase', 'none'). It
+        // must widen to include 'msg91' or the very first with_otp agreement
+        // verified through the new provider fails its INSERT under strict mode.
+        // doctrine/dbal is not installed (Blueprint::change() would need it, and
+        // even installed it maps MySQL ENUM to a plain string, silently dropping
+        // the constraint), so this widens the column with a raw ALTER TABLE.
+        if (Schema::hasTable('agreement_party_verifications')
+            && Schema::hasColumn('agreement_party_verifications', 'verified_via')) {
+            DB::statement(
+                "ALTER TABLE agreement_party_verifications MODIFY verified_via ENUM('firebase', 'msg91', 'none') NULL"
+            );
+        }
+
         // The replay guard's own storage.
         //
         // Deliberately NOT a lookup over party_phone_verifications: that table
@@ -45,7 +59,7 @@ return new class extends Migration
             Schema::create('used_phone_tokens', function (Blueprint $table) {
                 $table->id();
                 $table->string('provider_ref')->unique();
-                $table->timestamp('used_at');
+                $table->timestamp('used_at')->useCurrent();
             });
         }
     }
@@ -53,6 +67,18 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('used_phone_tokens');
+
+        // Narrowing back to ('firebase', 'none') is only safe if no row has
+        // actually been written with verified_via = 'msg91' — narrowing while
+        // such a row exists would truncate/reject it. This migration's own
+        // rollback runs before any real MSG91 traffic, so that holds here; it
+        // is not re-checked at runtime.
+        if (Schema::hasTable('agreement_party_verifications')
+            && Schema::hasColumn('agreement_party_verifications', 'verified_via')) {
+            DB::statement(
+                "ALTER TABLE agreement_party_verifications MODIFY verified_via ENUM('firebase', 'none') NULL"
+            );
+        }
 
         if (Schema::hasColumn('party_phone_verifications', 'provider_ref')) {
             Schema::table('party_phone_verifications', function (Blueprint $table) {
