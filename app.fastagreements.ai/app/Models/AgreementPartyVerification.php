@@ -22,6 +22,7 @@ class AgreementPartyVerification extends Model
     public const ROLE_GUARANTOR = 'guarantor';
 
     public const VIA_FIREBASE = 'firebase';
+    public const VIA_MSG91 = 'msg91';
     public const VIA_NONE = 'none';
 
     protected $fillable = [
@@ -31,6 +32,7 @@ class AgreementPartyVerification extends Model
         'mobile',
         'verified_at',
         'firebase_uid',
+        'provider_ref',
         'verified_via',
     ];
 
