@@ -150,11 +150,7 @@
             <tbody>
                 @forelse($invoices as $index => $row)
                     @php
-                        $amount = (float) $row->amount;
-                        $taxable = $amount / (1 + ($gstRate / 100));
-                        $gstVal = $amount - $taxable;
-                        $custState = $row->customer && $row->customer->state ? trim(strtolower($row->customer->state->name)) : '';
-                        $isSame = ($custState === $companyState);
+                        $gst = \App\Support\GstBreakdown::forCustomerState((float) $row->amount, $row->customer?->state?->name, $gstRate);
 
                         $dateStr = 'N/A';
                         if ($row->invoice_date) {
@@ -171,14 +167,14 @@
                         <td>{{ $row->customer?->gst_number ?? 'N/A' }}</td>
                         <td>{{ $row->customer?->state?->name ?? 'N/A' }}</td>
                         <td>{{ $row->customer?->state?->name ?? 'N/A' }}</td>
-                        <td>9983</td>
-                        <td class="text-right">₹{{ number_format($taxable, 2) }}</td>
-                        <td>{{ $gstRate }}%</td>
-                        <td class="text-right">₹{{ $isSame ? number_format($gstVal / 2, 2) : '0.00' }}</td>
-                        <td class="text-right">₹{{ $isSame ? number_format($gstVal / 2, 2) : '0.00' }}</td>
-                        <td class="text-right">₹{{ !$isSame ? number_format($gstVal, 2) : '0.00' }}</td>
-                        <td class="text-right">₹{{ number_format($gstVal, 2) }}</td>
-                        <td class="text-right">₹{{ number_format($amount, 2) }}</td>
+                        <td>{{ \App\Support\GstBreakdown::HSN_CODE }}</td>
+                        <td class="text-right">₹{{ number_format($gst->taxable, 2) }}</td>
+                        <td>{{ \App\Support\GstBreakdown::formatRate($gstRate) }}%</td>
+                        <td class="text-right">₹{{ number_format($gst->cgst, 2) }}</td>
+                        <td class="text-right">₹{{ number_format($gst->sgst, 2) }}</td>
+                        <td class="text-right">₹{{ number_format($gst->igst, 2) }}</td>
+                        <td class="text-right">₹{{ number_format($gst->totalTax(), 2) }}</td>
+                        <td class="text-right">₹{{ number_format($gst->amount, 2) }}</td>
                         <td>System</td>
                     </tr>
                 @empty

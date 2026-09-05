@@ -196,6 +196,11 @@
                                                 <input type="text" name="company_gstin" class="form-control" value="{{ setting('company_gstin') }}">
                                             </div>
                                             <div class="col-md-6">
+                                                <label class="form-label">GST Percentage</label>
+                                                <input type="number" step="0.01" min="0" max="100" name="gst_percentage" class="form-control" value="{{ setting('gst_percentage', 18) }}">
+                                                <span class="text-muted small d-block mt-1">Plan prices are stored inclusive of this rate. Invoices carve it out as CGST + SGST within {{ setting('company_state') ?: 'the company state' }}, or IGST outside it.</span>
+                                            </div>
+                                            <div class="col-md-6">
                                                 <label class="form-label">Address Line 1</label>
                                                 <input type="text" name="company_address_line_1" class="form-control" value="{{ setting('company_address_line_1') }}">
                                             </div>

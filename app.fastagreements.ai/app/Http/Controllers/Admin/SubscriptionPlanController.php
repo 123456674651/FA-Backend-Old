@@ -22,7 +22,12 @@ class SubscriptionPlanController extends Controller
             ->addIndexColumn()
 
             ->addColumn('price', function ($plan) {
-                return '₹ ' . number_format($plan->price, 2);
+                // Prices are stored GST-inclusive, so say so — the figure here is
+                // the whole of what a customer pays, tax included.
+                $rate = \App\Support\GstBreakdown::formatRate(\App\Support\GstBreakdown::defaultRate());
+
+                return '₹ ' . number_format($plan->price, 2)
+                    . '<br><small class="text-muted">incl. ' . $rate . '% GST</small>';
             })
 
             ->addColumn('duration', function ($plan) {
@@ -66,7 +71,7 @@ class SubscriptionPlanController extends Controller
                 ';
             })
 
-            ->rawColumns(['status', 'actions'])
+            ->rawColumns(['price', 'status', 'actions'])
             ->toJson();
     }
 

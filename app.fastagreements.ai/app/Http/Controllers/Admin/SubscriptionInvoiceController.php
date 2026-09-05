@@ -18,7 +18,7 @@ class SubscriptionInvoiceController extends Controller
         $plans = SubscriptionPlan::orderBy('name')->get();
 
         if ($request->ajax()) {
-            $query = SubscriptionInvoice::with(['customer', 'subscriptionPlan'])
+            $query = SubscriptionInvoice::with(['customer.state', 'subscriptionPlan'])
                 ->orderBy('invoice_date', 'desc');
 
             if ($request->filled('from_date') && $request->filled('to_date')) {
@@ -104,14 +104,14 @@ class SubscriptionInvoiceController extends Controller
 
     public function show($id)
     {
-        $invoice = SubscriptionInvoice::with(['customer', 'subscriptionPlan'])->findOrFail($id);
+        $invoice = SubscriptionInvoice::with(['customer.state', 'subscriptionPlan'])->findOrFail($id);
 
         return view('admin.subscription_invoices.show', compact('invoice'));
     }
 
     public function viewPdf($id)
     {
-        $invoice = SubscriptionInvoice::with(['customer', 'subscriptionPlan'])->findOrFail($id);
+        $invoice = SubscriptionInvoice::with(['customer.state', 'subscriptionPlan'])->findOrFail($id);
         $filename = 'invoice-' . $invoice->invoice_number . '.pdf';
 
         if (Schema::hasColumn('subscription_invoices', 'invoice_pdf') && !empty($invoice->invoice_pdf)) {
@@ -129,7 +129,7 @@ class SubscriptionInvoiceController extends Controller
 
     public function downloadPdf($id)
     {
-        $invoice = SubscriptionInvoice::with(['customer', 'subscriptionPlan'])->findOrFail($id);
+        $invoice = SubscriptionInvoice::with(['customer.state', 'subscriptionPlan'])->findOrFail($id);
         $filename = 'invoice-' . $invoice->invoice_number . '.pdf';
 
         if (Schema::hasColumn('subscription_invoices', 'invoice_pdf') && !empty($invoice->invoice_pdf)) {

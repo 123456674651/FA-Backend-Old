@@ -32,9 +32,25 @@
                             </div>
 
                             <div class="row gy-3">
+                                @php
+                                    // Plan prices are stored GST-inclusive; the split shown here is
+                                    // the intra-state one, which is what most customers see.
+                                    $gst = new \App\Support\GstBreakdown((float) $plan->price, true);
+                                    $ratePercent = \App\Support\GstBreakdown::formatRate($gst->rate);
+                                    $halfPercent = \App\Support\GstBreakdown::formatRate($gst->halfRate());
+                                @endphp
+
                                 <div class="col-md-4">
                                     <strong>Price</strong>
-                                    <p>₹ {{ number_format($plan->price, 2) }}</p>
+                                    <p class="mb-1">₹ {{ number_format($plan->price, 2) }}
+                                        <small class="text-muted">(incl. {{ $ratePercent }}% GST)</small>
+                                    </p>
+                                    <small class="text-muted d-block">
+                                        Taxable ₹{{ number_format($gst->taxable, 2) }}
+                                        + CGST {{ $halfPercent }}% ₹{{ number_format($gst->cgst, 2) }}
+                                        + SGST {{ $halfPercent }}% ₹{{ number_format($gst->sgst, 2) }}
+                                    </small>
+                                    <small class="text-muted d-block">Out of state: IGST {{ $ratePercent }}%, same total.</small>
                                 </div>
 
                                 <div class="col-md-4">

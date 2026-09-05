@@ -18,7 +18,7 @@ class InvoiceController extends Controller
     public function getInvoicePdfUrl($id)
     {
         try {
-            $invoice = SubscriptionInvoice::with(['customer', 'subscriptionPlan'])->find($id);
+            $invoice = SubscriptionInvoice::with(['customer.state', 'subscriptionPlan'])->find($id);
 
             if (!$invoice) {
                 return response()->json([
@@ -88,7 +88,7 @@ class InvoiceController extends Controller
     public function viewPdf($id)
     {
         try {
-            $invoice = SubscriptionInvoice::with(['customer', 'subscriptionPlan'])->find($id);
+            $invoice = SubscriptionInvoice::with(['customer.state', 'subscriptionPlan'])->find($id);
 
             if (!$invoice) {
                 return response()->json([
@@ -126,7 +126,7 @@ class InvoiceController extends Controller
     public function downloadPdf($id)
     {
         try {
-            $invoice = SubscriptionInvoice::with(['customer', 'subscriptionPlan'])->find($id);
+            $invoice = SubscriptionInvoice::with(['customer.state', 'subscriptionPlan'])->find($id);
 
             if (!$invoice) {
                 return response()->json([

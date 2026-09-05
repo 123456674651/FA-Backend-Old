@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\GstBreakdown;
 use App\Models\SubscriptionInvoice;
 use App\Models\Customer;
 use App\Models\State;
@@ -25,8 +26,7 @@ class GstReportController extends Controller
         if ($request->ajax()) {
             $query = $this->buildFilteredQuery($request);
 
-            $companyState = trim(strtolower(setting('company_state') ?? 'Gujarat'));
-            $gstRate = (float) $request->input('gst_percentage', 18);
+            $gstRate = $this->resolveRate($request);
 
             // Clone query to compute aggregates
             $totalsQuery = clone $query;
@@ -34,33 +34,8 @@ class GstReportController extends Controller
                 ->with(['customer.state:id,name'])
                 ->get();
 
-            $totalInvoiceAmount = 0;
-            $totalTaxableAmount = 0;
-            $totalCgst = 0;
-            $totalSgst = 0;
-            $totalIgst = 0;
-            $totalGstSum = 0;
+            $totals = $this->sumBreakdowns($invoicesForTotals, $gstRate);
             $totalInvoicesCount = $invoicesForTotals->count();
-
-            foreach ($invoicesForTotals as $inv) {
-                $amount = (float) $inv->amount;
-                $taxable = $amount / (1 + ($gstRate / 100));
-                $gstVal = $amount - $taxable;
-
-                $custState = $inv->customer && $inv->customer->state ? trim(strtolower($inv->customer->state->name)) : '';
-                $isSame = ($custState === $companyState);
-
-                $totalInvoiceAmount += $amount;
-                $totalTaxableAmount += $taxable;
-                $totalGstSum += $gstVal;
-
-                if ($isSame) {
-                    $totalCgst += $gstVal / 2;
-                    $totalSgst += $gstVal / 2;
-                } else {
-                    $totalIgst += $gstVal;
-                }
-            }
 
             return DataTables::of($query)
                 ->addIndexColumn()
@@ -86,40 +61,25 @@ class GstReportController extends Controller
                     return $row->customer?->state?->name ?? 'N/A';
                 })
                 ->addColumn('hsn_code', function () {
-                    return '9983';
+                    return GstBreakdown::HSN_CODE;
                 })
                 ->addColumn('taxable_amount', function ($row) use ($gstRate) {
-                    $taxable = (float) $row->amount / (1 + ($gstRate / 100));
-                    return number_format($taxable, 2);
+                    return number_format($this->breakdownFor($row, $gstRate)->taxable, 2);
                 })
                 ->addColumn('gst_percentage', function () use ($gstRate) {
-                    return number_format($gstRate, 0) . '%';
+                    return GstBreakdown::formatRate($gstRate) . '%';
                 })
-                ->addColumn('cgst_amount', function ($row) use ($gstRate, $companyState) {
-                    $amount = (float) $row->amount;
-                    $taxable = $amount / (1 + ($gstRate / 100));
-                    $gstVal = $amount - $taxable;
-                    $custState = $row->customer && $row->customer->state ? trim(strtolower($row->customer->state->name)) : '';
-                    return ($custState === $companyState) ? number_format($gstVal / 2, 2) : '0.00';
+                ->addColumn('cgst_amount', function ($row) use ($gstRate) {
+                    return number_format($this->breakdownFor($row, $gstRate)->cgst, 2);
                 })
-                ->addColumn('sgst_amount', function ($row) use ($gstRate, $companyState) {
-                    $amount = (float) $row->amount;
-                    $taxable = $amount / (1 + ($gstRate / 100));
-                    $gstVal = $amount - $taxable;
-                    $custState = $row->customer && $row->customer->state ? trim(strtolower($row->customer->state->name)) : '';
-                    return ($custState === $companyState) ? number_format($gstVal / 2, 2) : '0.00';
+                ->addColumn('sgst_amount', function ($row) use ($gstRate) {
+                    return number_format($this->breakdownFor($row, $gstRate)->sgst, 2);
                 })
-                ->addColumn('igst_amount', function ($row) use ($gstRate, $companyState) {
-                    $amount = (float) $row->amount;
-                    $taxable = $amount / (1 + ($gstRate / 100));
-                    $gstVal = $amount - $taxable;
-                    $custState = $row->customer && $row->customer->state ? trim(strtolower($row->customer->state->name)) : '';
-                    return ($custState !== $companyState) ? number_format($gstVal, 2) : '0.00';
+                ->addColumn('igst_amount', function ($row) use ($gstRate) {
+                    return number_format($this->breakdownFor($row, $gstRate)->igst, 2);
                 })
                 ->addColumn('total_gst', function ($row) use ($gstRate) {
-                    $amount = (float) $row->amount;
-                    $taxable = $amount / (1 + ($gstRate / 100));
-                    return number_format($amount - $taxable, 2);
+                    return number_format($this->breakdownFor($row, $gstRate)->totalTax(), 2);
                 })
                 ->addColumn('invoice_total', function ($row) {
                     return number_format($row->amount, 2);
@@ -128,12 +88,12 @@ class GstReportController extends Controller
                     return 'System';
                 })
                 ->with([
-                    'totalInvoiceAmount' => number_format($totalInvoiceAmount, 2),
-                    'totalTaxableAmount' => number_format($totalTaxableAmount, 2),
-                    'totalCgst' => number_format($totalCgst, 2),
-                    'totalSgst' => number_format($totalSgst, 2),
-                    'totalIgst' => number_format($totalIgst, 2),
-                    'totalGstSum' => number_format($totalGstSum, 2),
+                    'totalInvoiceAmount' => number_format($totals['amount'], 2),
+                    'totalTaxableAmount' => number_format($totals['taxable'], 2),
+                    'totalCgst' => number_format($totals['cgst'], 2),
+                    'totalSgst' => number_format($totals['sgst'], 2),
+                    'totalIgst' => number_format($totals['igst'], 2),
+                    'totalGstSum' => number_format($totals['tax'], 2),
                     'totalInvoicesCount' => $totalInvoicesCount,
                 ])
                 ->make(true);
@@ -153,8 +113,7 @@ class GstReportController extends Controller
         $query = $this->buildFilteredQuery($request);
         $invoices = $query->get();
 
-        $companyState = trim(strtolower(setting('company_state') ?? 'Gujarat'));
-        $gstRate = (float) $request->input('gst_percentage', 18);
+        $gstRate = $this->resolveRate($request);
 
         $headers = [
             'Sr. No.',
@@ -177,18 +136,14 @@ class GstReportController extends Controller
 
         $filename = 'gst_tr_report_' . date('Ymd_His') . '.csv';
 
-        return new StreamedResponse(function () use ($headers, $invoices, $gstRate, $companyState) {
+        return new StreamedResponse(function () use ($headers, $invoices, $gstRate) {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($handle, $headers);
 
             $index = 1;
             foreach ($invoices as $row) {
-                $amount = (float) $row->amount;
-                $taxable = $amount / (1 + ($gstRate / 100));
-                $gstVal = $amount - $taxable;
-                $custState = $row->customer && $row->customer->state ? trim(strtolower($row->customer->state->name)) : '';
-                $isSame = ($custState === $companyState);
+                $gst = $this->breakdownFor($row, $gstRate);
 
                 $dateStr = 'N/A';
                 if ($row->invoice_date) {
@@ -205,14 +160,14 @@ class GstReportController extends Controller
                     $row->customer?->gst_number ?? 'N/A',
                     $row->customer?->state?->name ?? 'N/A',
                     $row->customer?->state?->name ?? 'N/A',
-                    '9983',
-                    round($taxable, 2),
-                    $gstRate . '%',
-                    $isSame ? round($gstVal / 2, 2) : 0,
-                    $isSame ? round($gstVal / 2, 2) : 0,
-                    !$isSame ? round($gstVal, 2) : 0,
-                    round($gstVal, 2),
-                    round($amount, 2),
+                    GstBreakdown::HSN_CODE,
+                    $gst->taxable,
+                    GstBreakdown::formatRate($gstRate) . '%',
+                    $gst->cgst,
+                    $gst->sgst,
+                    $gst->igst,
+                    $gst->totalTax(),
+                    $gst->amount,
                     'System'
                 ]);
             }
@@ -236,40 +191,20 @@ class GstReportController extends Controller
         $query = $this->buildFilteredQuery($request);
         $invoices = $query->limit(500)->get();
 
-        $companyState = trim(strtolower(setting('company_state') ?? 'Gujarat'));
-        $gstRate = (float) $request->input('gst_percentage', 18);
+        $gstRate = $this->resolveRate($request);
         $filters = $request->all();
 
-        $totalInvoiceAmount = 0;
-        $totalTaxableAmount = 0;
-        $totalCgst = 0;
-        $totalSgst = 0;
-        $totalIgst = 0;
-        $totalGstSum = 0;
-
-        foreach ($invoices as $inv) {
-            $amount = (float) $inv->amount;
-            $taxable = $amount / (1 + ($gstRate / 100));
-            $gstVal = $amount - $taxable;
-            $custState = $inv->customer && $inv->customer->state ? trim(strtolower($inv->customer->state->name)) : '';
-            $isSame = ($custState === $companyState);
-
-            $totalInvoiceAmount += $amount;
-            $totalTaxableAmount += $taxable;
-            $totalGstSum += $gstVal;
-
-            if ($isSame) {
-                $totalCgst += $gstVal / 2;
-                $totalSgst += $gstVal / 2;
-            } else {
-                $totalIgst += $gstVal;
-            }
-        }
+        $totals = $this->sumBreakdowns($invoices, $gstRate);
+        $totalInvoiceAmount = $totals['amount'];
+        $totalTaxableAmount = $totals['taxable'];
+        $totalCgst = $totals['cgst'];
+        $totalSgst = $totals['sgst'];
+        $totalIgst = $totals['igst'];
+        $totalGstSum = $totals['tax'];
 
         $pdf = Pdf::loadView('admin.reports.gst_tr_pdf', compact(
             'invoices',
             'gstRate',
-            'companyState',
             'filters',
             'totalInvoiceAmount',
             'totalTaxableAmount',
@@ -292,40 +227,20 @@ class GstReportController extends Controller
         $query = $this->buildFilteredQuery($request);
         $invoices = $query->get();
 
-        $companyState = trim(strtolower(setting('company_state') ?? 'Gujarat'));
-        $gstRate = (float) $request->input('gst_percentage', 18);
+        $gstRate = $this->resolveRate($request);
         $filters = $request->all();
 
-        $totalInvoiceAmount = 0;
-        $totalTaxableAmount = 0;
-        $totalCgst = 0;
-        $totalSgst = 0;
-        $totalIgst = 0;
-        $totalGstSum = 0;
-
-        foreach ($invoices as $inv) {
-            $amount = (float) $inv->amount;
-            $taxable = $amount / (1 + ($gstRate / 100));
-            $gstVal = $amount - $taxable;
-            $custState = $inv->customer && $inv->customer->state ? trim(strtolower($inv->customer->state->name)) : '';
-            $isSame = ($custState === $companyState);
-
-            $totalInvoiceAmount += $amount;
-            $totalTaxableAmount += $taxable;
-            $totalGstSum += $gstVal;
-
-            if ($isSame) {
-                $totalCgst += $gstVal / 2;
-                $totalSgst += $gstVal / 2;
-            } else {
-                $totalIgst += $gstVal;
-            }
-        }
+        $totals = $this->sumBreakdowns($invoices, $gstRate);
+        $totalInvoiceAmount = $totals['amount'];
+        $totalTaxableAmount = $totals['taxable'];
+        $totalCgst = $totals['cgst'];
+        $totalSgst = $totals['sgst'];
+        $totalIgst = $totals['igst'];
+        $totalGstSum = $totals['tax'];
 
         return view('admin.reports.gst_tr_print', compact(
             'invoices',
             'gstRate',
-            'companyState',
             'filters',
             'totalInvoiceAmount',
             'totalTaxableAmount',
@@ -334,6 +249,54 @@ class GstReportController extends Controller
             'totalIgst',
             'totalGstSum'
         ));
+    }
+
+    /**
+     * The rate to report at: whatever the user typed into the filter,
+     * otherwise the rate configured in settings.
+     */
+    private function resolveRate(Request $request): float
+    {
+        return $request->filled('gst_percentage')
+            ? (float) $request->input('gst_percentage')
+            : GstBreakdown::defaultRate();
+    }
+
+    /**
+     * Every figure in this report comes from GstBreakdown, so a row here can
+     * never disagree with the same invoice's PDF by a paisa.
+     */
+    private function breakdownFor($invoice, float $rate): GstBreakdown
+    {
+        return GstBreakdown::forCustomerState(
+            (float) $invoice->amount,
+            $invoice->customer?->state?->name,
+            $rate
+        );
+    }
+
+    /**
+     * Totals are summed from the per-invoice rounded figures, not computed
+     * afresh from the gross, so the footer equals the column above it.
+     *
+     * @return array{amount: float, taxable: float, cgst: float, sgst: float, igst: float, tax: float}
+     */
+    private function sumBreakdowns($invoices, float $rate): array
+    {
+        $totals = ['amount' => 0.0, 'taxable' => 0.0, 'cgst' => 0.0, 'sgst' => 0.0, 'igst' => 0.0, 'tax' => 0.0];
+
+        foreach ($invoices as $invoice) {
+            $gst = $this->breakdownFor($invoice, $rate);
+
+            $totals['amount'] += $gst->amount;
+            $totals['taxable'] += $gst->taxable;
+            $totals['cgst'] += $gst->cgst;
+            $totals['sgst'] += $gst->sgst;
+            $totals['igst'] += $gst->igst;
+            $totals['tax'] += $gst->totalTax();
+        }
+
+        return array_map(fn ($v) => round($v, 2), $totals);
     }
 
     /**
@@ -360,12 +323,16 @@ class GstReportController extends Controller
             $query->where('invoice_number', 'like', '%' . $request->input('invoice_number') . '%');
         }
 
-        $companyState = trim(strtolower(setting('company_state') ?? 'Gujarat'));
+        $companyState = GstBreakdown::companyState();
         if ($request->filled('gst_type')) {
             $gstType = $request->input('gst_type');
             if ($gstType === 'cgst' || $gstType === 'sgst') {
-                $query->whereHas('customer.state', function ($q) use ($companyState) {
-                    $q->where('name', $companyState);
+                // Customers with no state on record are treated as intra-state
+                // by GstBreakdown, so they belong in this filter too.
+                $query->where(function ($q) use ($companyState) {
+                    $q->whereHas('customer.state', function ($sq) use ($companyState) {
+                        $sq->where('name', $companyState);
+                    })->orWhereDoesntHave('customer.state');
                 });
             } elseif ($gstType === 'igst') {
                 $query->whereHas('customer.state', function ($q) use ($companyState) {

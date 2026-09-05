@@ -179,6 +179,13 @@
 
         $status = strtolower($invoice->payment_status);
 
+        // The stored amount is GST-inclusive: the tax is carved out of it, never
+        // added on top, so Total always equals what the customer actually paid.
+        $customerState = $invoice->customer?->state?->name;
+        $gst = \App\Support\GstBreakdown::forCustomerState((float) $invoice->amount, $customerState);
+        $ratePercent = \App\Support\GstBreakdown::formatRate($gst->rate);
+        $halfPercent = \App\Support\GstBreakdown::formatRate($gst->halfRate());
+
     @endphp
 
     <div class="header">
@@ -260,6 +267,14 @@
 
             {{ $invoice->customer->mobile ?? '-' }}
 
+            @if($invoice->customer?->gst_number)
+                <br>GSTIN : {{ $invoice->customer->gst_number }}
+            @endif
+
+            @if($customerState)
+                <br>Place of Supply : {{ $customerState }}
+            @endif
+
         </div>
 
         <div class="clearfix"></div>
@@ -272,17 +287,19 @@
 
             <tr>
 
-                <th width="8%">#</th>
+                <th width="6%">#</th>
 
                 <th>Description</th>
 
-                <th width="22%">Plan</th>
+                <th width="20%">Plan</th>
 
-                <th width="15%">Price</th>
+                <th width="10%">HSN/SAC</th>
 
-                <th width="10%">Qty</th>
+                <th width="15%">Taxable Value</th>
 
-                <th width="18%">Total</th>
+                <th width="8%">Qty</th>
+
+                <th width="16%">Total</th>
 
             </tr>
 
@@ -298,11 +315,13 @@
 
                 <td>{{ $invoice->subscriptionPlan->name ?? '-' }}</td>
 
-                <td class="text-right">₹{{ number_format($invoice->amount, 2) }}</td>
+                <td class="text-right">{{ \App\Support\GstBreakdown::HSN_CODE }}</td>
+
+                <td class="text-right">₹{{ number_format($gst->taxable, 2) }}</td>
 
                 <td class="text-right">1</td>
 
-                <td class="text-right">₹{{ number_format($invoice->amount, 2) }}</td>
+                <td class="text-right">₹{{ number_format($gst->taxable, 2) }}</td>
 
             </tr>
 
@@ -346,6 +365,8 @@
         <ul>
 
             <li>Payment received for subscription plan.</li>
+
+            <li>Plan price is inclusive of {{ $ratePercent }}% GST. No amount is charged over the plan price.</li>
 
             <li>This is a computer-generated invoice.</li>
 
@@ -406,10 +427,10 @@
 
             <tr>
 
-                <td>Subtotal</td>
+                <td>Taxable Value</td>
 
                 <td class="text-right">
-                    ₹{{ number_format($invoice->amount, 2) }}
+                    ₹{{ number_format($gst->taxable, 2) }}
                 </td>
 
             </tr>
@@ -422,21 +443,35 @@
 
             </tr>
 
-            <tr>
+            @if($gst->isIntraState)
 
-                <td>CGST</td>
+                <tr>
 
-                <td class="text-right">₹0.00</td>
+                    <td>CGST ({{ $halfPercent }}%)</td>
 
-            </tr>
+                    <td class="text-right">₹{{ number_format($gst->cgst, 2) }}</td>
 
-            <tr>
+                </tr>
 
-                <td>SGST</td>
+                <tr>
 
-                <td class="text-right">₹0.00</td>
+                    <td>SGST ({{ $halfPercent }}%)</td>
 
-            </tr>
+                    <td class="text-right">₹{{ number_format($gst->sgst, 2) }}</td>
+
+                </tr>
+
+            @else
+
+                <tr>
+
+                    <td>IGST ({{ $ratePercent }}%)</td>
+
+                    <td class="text-right">₹{{ number_format($gst->igst, 2) }}</td>
+
+                </tr>
+
+            @endif
 
             <tr class="grand">
 

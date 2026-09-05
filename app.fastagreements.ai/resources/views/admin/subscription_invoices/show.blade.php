@@ -26,6 +26,12 @@
                     <div class="card-body">
                         <h5 class="card-title">Invoice #{{ $invoice->invoice_number }}</h5>
 
+                        @php
+                            $gst = \App\Support\GstBreakdown::forCustomerState((float) $invoice->amount, $invoice->customer?->state?->name);
+                            $ratePercent = \App\Support\GstBreakdown::formatRate($gst->rate);
+                            $halfPercent = \App\Support\GstBreakdown::formatRate($gst->halfRate());
+                        @endphp
+
                         <div class="row mb-4">
                             <div class="col-md-4">
                                 <div class="p-3 border rounded">
@@ -39,7 +45,9 @@
                                 <div class="p-3 border rounded">
                                     <h6>Subscription Plan</h6>
                                     <p><strong>Name:</strong> {{ $invoice->subscriptionPlan?->name ?? 'N/A' }}</p>
-                                    <p><strong>Price:</strong> ₹{{ number_format($invoice->subscriptionPlan?->price ?? 0, 2) }}</p>
+                                    <p><strong>Price:</strong> ₹{{ number_format($invoice->subscriptionPlan?->price ?? 0, 2) }}
+                                        <small class="text-muted">(incl. {{ $ratePercent }}% GST)</small>
+                                    </p>
                                     <p><strong>Duration:</strong> {{ $invoice->subscriptionPlan?->duration_value ?? 'N/A' }} {{ ucfirst($invoice->subscriptionPlan?->duration_type ?? '') }}</p>
                                 </div>
                             </div>
@@ -72,7 +80,37 @@
                                     <p><strong>Method:</strong> {{ ucfirst($invoice->payment_method ?? 'N/A') }}</p>
                                 </div>
                             </div>
-                            <div class="col-md-8 text-end">
+                            <div class="col-md-4">
+                                <div class="p-3 border rounded">
+                                    <h6>Tax Breakdown <small class="text-muted">({{ $gst->isIntraState ? 'Intra-state' : 'Inter-state' }})</small></h6>
+                                    <table class="table table-sm mb-0">
+                                        <tr>
+                                            <td>Taxable Value</td>
+                                            <td class="text-end">₹{{ number_format($gst->taxable, 2) }}</td>
+                                        </tr>
+                                        @if($gst->isIntraState)
+                                            <tr>
+                                                <td>CGST ({{ $halfPercent }}%)</td>
+                                                <td class="text-end">₹{{ number_format($gst->cgst, 2) }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>SGST ({{ $halfPercent }}%)</td>
+                                                <td class="text-end">₹{{ number_format($gst->sgst, 2) }}</td>
+                                            </tr>
+                                        @else
+                                            <tr>
+                                                <td>IGST ({{ $ratePercent }}%)</td>
+                                                <td class="text-end">₹{{ number_format($gst->igst, 2) }}</td>
+                                            </tr>
+                                        @endif
+                                        <tr class="fw-bold border-top">
+                                            <td>Total Paid</td>
+                                            <td class="text-end">₹{{ number_format($invoice->amount, 2) }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-end">
                                 <a href="{{ route('subscription-invoices.view', $invoice->id) }}" target="_blank" class="btn btn-secondary">
                                     <i class="bi bi-file-earmark-pdf"></i> View Invoice
                                 </a>

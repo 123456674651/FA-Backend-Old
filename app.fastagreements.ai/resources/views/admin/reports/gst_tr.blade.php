@@ -151,12 +151,15 @@
                     <!-- GST Percentage -->
                     <div class="col-md-3 col-sm-6 col-12">
                         <label class="form-label fw-semibold text-muted small">GST Percentage</label>
+                        @php
+                            $configuredRate = \App\Support\GstBreakdown::formatRate(\App\Support\GstBreakdown::defaultRate());
+                        @endphp
                         <select name="gst_percentage" id="gst_percentage" class="form-select">
-                            <option value="18">18% (Default)</option>
-                            <option value="12">12%</option>
-                            <option value="5">5%</option>
-                            <option value="28">28%</option>
-                            <option value="0">0%</option>
+                            @foreach(array_unique(array_merge([$configuredRate], ['18', '12', '5', '28', '0'])) as $rate)
+                                <option value="{{ $rate }}" @selected($rate === $configuredRate)>
+                                    {{ $rate }}%{{ $rate === $configuredRate ? ' (Default)' : '' }}
+                                </option>
+                            @endforeach
                         </select>
                     </div>
 

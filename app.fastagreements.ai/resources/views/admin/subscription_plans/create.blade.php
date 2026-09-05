@@ -40,9 +40,10 @@
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label">Price</label>
+                                        <label class="form-label">Price (inclusive of GST)</label>
                                         <input type="number" step="0.01" name="price" class="form-control"
                                             value="{{ old('price') }}" placeholder="Enter Price">
+                                        <small class="text-muted">The customer pays exactly this. {{ \App\Support\GstBreakdown::formatRate(\App\Support\GstBreakdown::defaultRate()) }}% GST is carved out of it on the invoice.</small>
                                         @error('price')
                                             <span class="text-danger">{{ $message }}</span>
                                         @enderror

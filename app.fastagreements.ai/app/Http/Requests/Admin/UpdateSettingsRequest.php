@@ -195,6 +195,7 @@ class UpdateSettingsRequest extends FormRequest
                     'company_logo' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
                     'company_name' => 'required|string|max:255',
                     'company_gstin' => 'nullable|string|max:50',
+                    'gst_percentage' => 'nullable|numeric|min:0|max:100',
                     'company_address_line_1' => 'nullable|string|max:255',
                     'company_address_line_2' => 'nullable|string|max:255',
                     'company_city' => 'nullable|string|max:100',
