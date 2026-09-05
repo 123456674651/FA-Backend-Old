@@ -73,18 +73,6 @@ class FirebaseIdTokenVerifier
     }
 
     /**
-     * Reduces an E.164 number (+919876543210) to the ten digits the
-     * `customers.mobile` column holds, so a customer resolves to one row
-     * however they signed in.
-     */
-    public static function toStoredMobile(string $phoneNumber): string
-    {
-        $digits = preg_replace('/\D/', '', $phoneNumber) ?? '';
-
-        return strlen($digits) > 10 ? substr($digits, -10) : $digits;
-    }
-
-    /**
      * Google's signing certificates, keyed by `kid`.
      *
      * They rotate these roughly daily and say when via Cache-Control, so the

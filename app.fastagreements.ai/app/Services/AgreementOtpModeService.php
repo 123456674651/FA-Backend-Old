@@ -7,6 +7,7 @@ use App\Models\AgreementPartyVerification;
 use App\Models\Customer;
 use App\Models\PartyPhoneVerification;
 use App\Services\Auth\FirebaseIdTokenVerifier;
+use App\Support\MobileNumber;
 use Carbon\Carbon;
 
 /**
@@ -72,7 +73,7 @@ class AgreementOtpModeService
         // Throws FirebaseTokenException, rendered as 401 by the exception handler.
         $identity = $this->firebase->verify($idToken);
 
-        $mobile = FirebaseIdTokenVerifier::toStoredMobile($identity['phone_number']);
+        $mobile = MobileNumber::toStored($identity['phone_number']);
 
         if (strlen($mobile) !== 10) {
             throw new PartyVerificationException(
@@ -324,7 +325,7 @@ class AgreementOtpModeService
             return null;
         }
 
-        $mobile = FirebaseIdTokenVerifier::toStoredMobile($value);
+        $mobile = MobileNumber::toStored($value);
 
         return strlen($mobile) === 10 ? $mobile : null;
     }

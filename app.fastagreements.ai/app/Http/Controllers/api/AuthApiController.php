@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Services\Auth\FirebaseIdTokenVerifier;
 use App\Services\Auth\JwtService;
 use App\Support\ApiResponse;
+use App\Support\MobileNumber;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -43,7 +44,7 @@ class AuthApiController extends Controller
 
         $identity = $this->firebase->verify($request->input('id_token'));
 
-        $mobile = FirebaseIdTokenVerifier::toStoredMobile($identity['phone_number']);
+        $mobile = MobileNumber::toStored($identity['phone_number']);
 
         if (strlen($mobile) !== 10) {
             return ApiResponse::error(
@@ -111,7 +112,7 @@ class AuthApiController extends Controller
     {
         $request->validate(['mobile' => 'required|string']);
 
-        $mobile = FirebaseIdTokenVerifier::toStoredMobile($request->query('mobile', ''));
+        $mobile = MobileNumber::toStored($request->query('mobile', ''));
 
         return ApiResponse::ok([
             'exists' => strlen($mobile) === 10 && Customer::where('mobile', $mobile)->exists(),
