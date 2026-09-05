@@ -6,7 +6,7 @@ use App\Models\Aggriment;
 use App\Models\AgreementPartyVerification;
 use App\Models\Customer;
 use App\Models\PartyPhoneVerification;
-use App\Services\Auth\FirebaseIdTokenVerifier;
+use App\Services\Auth\PhoneIdentityVerifier;
 use App\Support\MobileNumber;
 use Carbon\Carbon;
 
@@ -42,7 +42,7 @@ class AgreementOtpModeService
      */
     public const VERIFICATION_TTL_MINUTES = 120;
 
-    public function __construct(private readonly FirebaseIdTokenVerifier $firebase)
+    public function __construct(private readonly PhoneIdentityVerifier $verifier)
     {
     }
 
@@ -71,7 +71,7 @@ class AgreementOtpModeService
     public function recordPhoneVerification(int $customerId, string $idToken): array
     {
         // Throws FirebaseTokenException, rendered as 401 by the exception handler.
-        $identity = $this->firebase->verify($idToken);
+        $identity = $this->verifier->verify($idToken);
 
         $mobile = MobileNumber::toStored($identity['phone_number']);
 

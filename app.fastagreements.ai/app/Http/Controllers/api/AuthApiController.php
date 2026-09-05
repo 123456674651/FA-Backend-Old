@@ -4,8 +4,8 @@ namespace App\Http\Controllers\api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
-use App\Services\Auth\FirebaseIdTokenVerifier;
 use App\Services\Auth\JwtService;
+use App\Services\Auth\PhoneIdentityVerifier;
 use App\Support\ApiResponse;
 use App\Support\MobileNumber;
 use Illuminate\Database\QueryException;
@@ -26,7 +26,7 @@ use Illuminate\Validation\ValidationException;
 class AuthApiController extends Controller
 {
     public function __construct(
-        private readonly FirebaseIdTokenVerifier $firebase,
+        private readonly PhoneIdentityVerifier $verifier,
         private readonly JwtService $jwt,
     ) {
     }
@@ -42,7 +42,7 @@ class AuthApiController extends Controller
     {
         $request->validate(['id_token' => 'required|string']);
 
-        $identity = $this->firebase->verify($request->input('id_token'));
+        $identity = $this->verifier->verify($request->input('id_token'));
 
         $mobile = MobileNumber::toStored($identity['phone_number']);
 

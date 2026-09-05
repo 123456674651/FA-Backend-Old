@@ -22,7 +22,7 @@ use Throwable;
  * Only a project id is needed. Verification uses Google's *public* x509
  * certificates, so unlike FCM this requires no service account.
  */
-class FirebaseIdTokenVerifier
+class FirebaseIdTokenVerifier implements PhoneIdentityVerifier
 {
     /**
      * @return array{uid: string, phone_number: string}
@@ -30,7 +30,7 @@ class FirebaseIdTokenVerifier
      * @throws FirebaseTokenException for anything suspect — wrong project, bad
      *         signature, expired, or a sign-in method that proves no phone number.
      */
-    public function verify(string $idToken): array
+    public function verify(string $token): array
     {
         $projectId = $this->projectId();
 
@@ -39,7 +39,7 @@ class FirebaseIdTokenVerifier
         JWT::$leeway = (int) config('apiauth.firebase.leeway', 60);
 
         try {
-            $decoded = (array) JWT::decode($idToken, $keys);
+            $decoded = (array) JWT::decode($token, $keys);
         } catch (Throwable) {
             throw new FirebaseTokenException('The phone verification token is invalid or has expired.');
         }

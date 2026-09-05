@@ -2,7 +2,7 @@
 
 use App\Http\Middleware\AuthenticateJwt;
 use App\Http\Middleware\EnsureMinimumAppVersion;
-use App\Services\Auth\FirebaseTokenException;
+use App\Services\Auth\PhoneVerificationException;
 use App\Support\ApiResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -28,11 +28,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('api', EnsureMinimumAppVersion::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // A rejected Firebase token describes what the caller sent, so it is a
-        // 401 — not the 500 an uncaught RuntimeException would otherwise produce.
-        $exceptions->render(function (FirebaseTokenException $e, Request $request) {
+        // A rejected phone-verification token describes what the caller sent, so
+        // it is a 401 — not the 500 an uncaught RuntimeException would otherwise
+        // produce. Widened from FirebaseTokenException to the interface's base
+        // exception so a future provider is covered without a second handler.
+        $exceptions->render(function (PhoneVerificationException $e, Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
-                return ApiResponse::error(401, 'FIREBASE_TOKEN_INVALID', $e->getMessage());
+                return ApiResponse::error(401, 'PHONE_TOKEN_INVALID', $e->getMessage());
             }
 
             return null;
