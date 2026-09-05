@@ -19,7 +19,26 @@ class AgreementController extends Controller
     {
 
         if ($request->ajax()) {
-            $agreements = Aggriment::with(['party1', 'party2', 'category', 'subCategory'])->latest();
+            // Select only the columns the table renders. The default SELECT *
+            // pulls party_1_signature / party_2_signature (longtext base64 image
+            // blobs), which MySQL then has to materialise while filesorting the
+            // whole table on the unindexed created_at — that was the 60s hang.
+            $agreements = Aggriment::query()
+                ->select([
+                    'id',
+                    'party_1_id',
+                    'party_2_id',
+                    'category_id',
+                    'sub_category',
+                    'created_at',
+                ])
+                ->with([
+                    'party1:id,name',
+                    'party2:id,name',
+                    'category:id,category_name',
+                    'subCategory:id,category_name',
+                ])
+                ->latest();
 
             // Category Filter
             if ($request->filled('category_id')) {
@@ -70,30 +89,14 @@ class AgreementController extends Controller
                     }
                 })
                 ->addColumn('plan_name', function ($row) {
-                    if ($row->party1) {
-                        $subscription = \App\Models\CustomerSubscription::with('plan')
-                            ->where('customer_id', $row->party_1_id)
-                            ->orderBy('id', 'desc')
-                            ->first();
+                    $plan = $this->latestPlanFor($row);
 
-                        if ($subscription && $subscription->plan) {
-                            return $subscription->plan->name;
-                        }
-                    }
-                    return 'N/A';
+                    return $plan ? $plan->name : 'N/A';
                 })
                 ->addColumn('plan_price', function ($row) {
-                    if ($row->party1) {
-                        $subscription = \App\Models\CustomerSubscription::with('plan')
-                            ->where('customer_id', $row->party_1_id)
-                            ->orderBy('id', 'desc')
-                            ->first();
+                    $plan = $this->latestPlanFor($row);
 
-                        if ($subscription && $subscription->plan) {
-                            return '₹' . number_format($subscription->plan->price, 2);
-                        }
-                    }
-                    return 'N/A';
+                    return $plan ? '₹' . number_format($plan->price, 2) : 'N/A';
                 })
                 ->editColumn('created_at', function ($row) {
                     return $row->created_at ? $row->created_at->format('Y-m-d H:i') : 'N/A';
@@ -118,6 +121,30 @@ class AgreementController extends Controller
         $parties = Customer::where('is_active', 1)->orderBy('name')->get();
 
         return view('admin.agreements.index', compact('categories', 'parties'));
+    }
+
+    /**
+     * Resolve party 1's latest subscription plan once per row, memoised so the
+     * plan_name and plan_price columns don't each fire the same query.
+     */
+    private $planCache = [];
+
+    private function latestPlanFor($row)
+    {
+        if (! $row->party_1_id) {
+            return null;
+        }
+
+        if (! array_key_exists($row->party_1_id, $this->planCache)) {
+            $subscription = \App\Models\CustomerSubscription::with('plan')
+                ->where('customer_id', $row->party_1_id)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            $this->planCache[$row->party_1_id] = $subscription ? $subscription->plan : null;
+        }
+
+        return $this->planCache[$row->party_1_id];
     }
 
     /**

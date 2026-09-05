@@ -36,7 +36,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        URL::forceScheme('https');
+        // Production sits behind TLS and needs generated URLs forced to https.
+        // Forcing it unconditionally broke `artisan serve`: every asset and form
+        // action rendered as https against a plain-HTTP dev server, so the
+        // browser opened TLS handshakes it answered with "Unsupported SSL
+        // request". Follow APP_URL instead — https everywhere it is https.
+        if (str_starts_with((string) config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+        }
 
         $this->registerCustomerGuard();
         $this->guardRazorpayConfig();
