@@ -1,0 +1,93 @@
+/* ================================
+   Common Pagination Style
+   Color: #212529
+================================ */
+
+/* Laravel & DataTables Pagination */
+.pagination .page-link {
+    color: #212529 !important;
+    background: #fff;
+    border: 1px solid #212529;
+    margin: 0 3px;
+    border-radius: 4px;
+    transition: all .2s ease;
+}
+
+/* Hover */
+.pagination .page-link:hover {
+    color: #fff !important;
+    background: #212529 !important;
+    border-color: #212529 !important;
+}
+
+/* Active */
+.pagination .page-item.active .page-link {
+    color: #fff !important;
+    background: #212529 !important;
+    border-color: #212529 !important;
+}
+
+/* Focus */
+.pagination .page-link:focus {
+    box-shadow: none !important;
+    outline: none;
+}
+
+/* Disabled */
+.pagination .page-item.disabled .page-link {
+    color: #6c757d !important;
+    background: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+/* DataTables Pagination */
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    color: #212529 !important;
+    border: 1px solid #212529 !important;
+    background: #fff !important;
+    border-radius: 4px;
+    margin: 0 3px;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: #212529 !important;
+    color: #fff !important;
+    border-color: #212529 !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+    background: #212529 !important;
+    color: #fff !important;
+    border-color: #212529 !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+    color: #6c757d !important;
+    background: #f8f9fa !important;
+    border-color: #dee2e6 !important;
+}
+
+.custom-btn {
+    display: inline-block;
+    padding: 0.375rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #fff;               /* text-white */
+    background-color: #6c757d; /* btn-secondary */
+    border: 1px solid #6c757d;
+    border-radius: 0.375rem;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    margin-right: 0.5rem;      /* me-2 */
+    transition: all 0.15s ease-in-out;
+}
+
+.custom-btn:hover {
+    background-color: #5c636a;
+    border-color: #565e64;
+    color: #fff;
+}
