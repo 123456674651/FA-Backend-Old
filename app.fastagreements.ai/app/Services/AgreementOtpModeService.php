@@ -9,6 +9,8 @@ use App\Models\PartyPhoneVerification;
 use App\Services\Auth\PhoneIdentityVerifier;
 use App\Support\MobileNumber;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The with-OTP / without-OTP tier.
@@ -57,21 +59,21 @@ class AgreementOtpModeService
     // ---------------------------------------------------------------------
 
     /**
-     * Records that a number was confirmed, from the Firebase ID token the
-     * phone verification produced.
+     * Records that a number was confirmed, from the token the provider's
+     * verification produced.
      *
-     * The token is signed by Google and carries the number Firebase actually
-     * verified, so unlike the code this replaces there is nothing here the
-     * client can fabricate.
+     * The token is checked with the provider, which returns the number it
+     * actually verified — so unlike the code this replaces, there is nothing
+     * here the client can fabricate.
      *
      * @return array{mobile: string, verified_at: Carbon}
      *
      * @throws PartyVerificationException
      */
-    public function recordPhoneVerification(int $customerId, string $idToken): array
+    public function recordPhoneVerification(int $customerId, string $accessToken): array
     {
-        // Throws FirebaseTokenException, rendered as 401 by the exception handler.
-        $identity = $this->verifier->verify($idToken);
+        // Throws PhoneVerificationException, rendered as 401 by the handler.
+        $identity = $this->verifier->verify($accessToken);
 
         $mobile = MobileNumber::toStored($identity['phone_number']);
 
@@ -83,11 +85,39 @@ class AgreementOtpModeService
             );
         }
 
+        // A per-verification digest, not the number — see Msg91TokenVerifier.
+        // If this ever becomes the phone number again, the guard below stops
+        // being a replay guard and starts permanently banning numbers.
+        $providerRef = (string) $identity['uid'];
         $verifiedAt = Carbon::now();
+
+        // One verification, one confirmation. Without this a token captured
+        // once could be replayed to confirm the same number again later,
+        // outliving the freshness window it was meant to be bounded by.
+        //
+        // Claimed in its own append-only table rather than by scanning
+        // party_phone_verifications: that table is keyed on (customer_id,
+        // mobile) and updated in place, so re-confirming a number would erase
+        // the previous token's reference and hand it back its validity.
+        //
+        // The UNIQUE index is what actually enforces this. Two requests
+        // carrying the same token can both pass a SELECT; only one can insert.
+        try {
+            DB::table('used_phone_tokens')->insert([
+                'provider_ref' => $providerRef,
+                'used_at' => $verifiedAt,
+            ]);
+        } catch (QueryException) {
+            throw new PartyVerificationException(
+                422,
+                'TOKEN_ALREADY_USED',
+                'That confirmation has already been used. Please request a new code.',
+            );
+        }
 
         PartyPhoneVerification::updateOrCreate(
             ['customer_id' => $customerId, 'mobile' => $mobile],
-            ['firebase_uid' => $identity['uid'], 'verified_at' => $verifiedAt],
+            ['provider_ref' => $providerRef, 'verified_at' => $verifiedAt],
         );
 
         return ['mobile' => $mobile, 'verified_at' => $verifiedAt];
@@ -228,8 +258,11 @@ class AgreementOtpModeService
                     'mobile' => $person['mobile'],
                     'verified_at' => $proof?->verified_at,
                     'firebase_uid' => $proof?->firebase_uid,
+                    'provider_ref' => $proof?->provider_ref,
                     'verified_via' => $proof !== null
-                        ? AgreementPartyVerification::VIA_FIREBASE
+                        ? ($proof->provider_ref !== null
+                            ? AgreementPartyVerification::VIA_MSG91
+                            : AgreementPartyVerification::VIA_FIREBASE)
                         : AgreementPartyVerification::VIA_NONE,
                 ],
             );

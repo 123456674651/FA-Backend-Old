@@ -159,7 +159,7 @@ Route::middleware('auth.jwt')->group(function () {
      * row and renders the document in one call, so there is no window in which
      * an existing agreement could sit waiting on confirmations.
      */
-    Route::post('party-verifications/firebase', [PartyVerificationController::class, 'verifyPhone']);
+    Route::post('party-verifications/msg91', [PartyVerificationController::class, 'verifyPhone']);
     Route::post('party-verifications/pending', [PartyVerificationController::class, 'pendingForCreation']);
     Route::get('agreements/{agreement}/verifications', [PartyVerificationController::class, 'forAgreement'])
         ->whereNumber('agreement');

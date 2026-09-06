@@ -28,19 +28,19 @@ class PartyVerificationController extends Controller
     /**
      * Records that a party or guarantor confirmed their number.
      *
-     * Called once per person, before `create_aggriment`. The app runs Firebase
-     * phone verification on the handset and posts the resulting ID token here;
-     * the number inside that token is what gets recorded, not anything the
-     * client asserts.
+     * Called once per person, before `create_aggriment`. The app runs the
+     * MSG91 OTP widget on the handset and posts the resulting access token
+     * here; the number inside that token is what gets recorded, not anything
+     * the client asserts.
      */
     public function verifyPhone(Request $request): JsonResponse
     {
-        $request->validate(['id_token' => 'required|string']);
+        $request->validate(['access_token' => 'required|string']);
 
         try {
             $result = $this->otpMode->recordPhoneVerification(
                 (int) $request->user()->id,
-                $request->input('id_token'),
+                $request->input('access_token'),
             );
         } catch (PartyVerificationException $e) {
             return $e->toResponse();
