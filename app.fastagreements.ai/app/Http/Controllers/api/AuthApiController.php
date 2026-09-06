@@ -100,6 +100,34 @@ class AuthApiController extends Controller
     }
 
     /**
+     * TEMPORARY — dev/Postman helper. Issues a session token for a mobile
+     * number without Firebase, so protected routes can be exercised while the
+     * client-side sign-in is not wired up. Blocked in production. Remove once
+     * the real flow is in place.
+     */
+    public function devLogin(Request $request): JsonResponse
+    {
+        if (app()->environment('production')) {
+            return ApiResponse::error(404, 'NOT_FOUND', 'Not found.');
+        }
+
+        $request->validate(['mobile' => 'required|string']);
+
+        $mobile = FirebaseIdTokenVerifier::toStoredMobile($request->input('mobile'));
+
+        $customer = Customer::firstOrCreate(
+            ['mobile' => $mobile],
+            ['name' => '', 'address' => '', 'is_active' => 1],
+        );
+
+        return ApiResponse::ok([
+            'token' => $this->jwt->issueForCustomer((int) $customer->id),
+            'profile_complete' => $this->profileIsComplete($customer),
+            'customer' => $this->publicCustomer($customer),
+        ], 'Signed in (dev).');
+    }
+
+    /**
      * Whether a number already has an account.
      *
      * The login screen asks before triggering an SMS, so an unregistered

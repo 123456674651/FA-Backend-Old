@@ -582,7 +582,13 @@ class CustomerController extends Controller
         $user_id = $request->user()->id;
         $mobile = $request->mobile_number;
         $customer = Customer::where('mobile', $mobile)->first();
-         $firebaseToken = $request->fcm_token;
+        // Disabled: this endpoint answers "who owns this number?" about a third
+        // party, so $customer here is the looked-up party, not the caller. The
+        // app always sends its own device token, so writing it onto the other
+        // person's row misdelivered their push notifications. The caller's token
+        // is now saved only where it belongs — auth/firebase (login) and
+        // auth/profile.
+        // $firebaseToken = $request->fcm_token;
 
         
            if (!$customer) {
@@ -610,18 +616,23 @@ class CustomerController extends Controller
             ]);
         }
       
-        // Update Firebase Token
-    if (!empty($firebaseToken)) {
-        $customer->update([
-            'fcm_token' => $firebaseToken
-        ]);
-    }
+        // Update Firebase Token — disabled, see note above.
+        // if (!empty($firebaseToken)) {
+        //     $customer->update([
+        //         'fcm_token' => $firebaseToken
+        //     ]);
+        // }
+
+        // Session token for the looked-up party, issued the same way as login.
+        $token = app(\App\Services\Auth\JwtService::class)
+            ->issueForCustomer((int) $customer->id);
 
         if ($customer) {
             return response()->json([
                 'status' => true,
                 'message' => 'Customer found',
                  'data' => [
+                      'token'          => $token,
                       'id'             => $customer->id,
                       'name'           => $customer->name,
                       'mobile'         => $customer->mobile,

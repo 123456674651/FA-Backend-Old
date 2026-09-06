@@ -1924,4 +1924,36 @@ private function resolveAgreementPdfPath($file): ?string
 			'all_matches' => $languageMatches,
 		];
 	}
+
+
+	/**
+ *
+ * Returns the caller's own draft agreements (is_draft = 1), not yet expired
+ * (created within the last 24 hours — matches the cleanup job's window),
+ * with every relation the create/edit form needs to prefill itself.
+ *
+ * Ordered newest first, so $data[0] is the draft to resume by default if
+ * the app only ever keeps one in-progress draft per user.
+ */
+public function drafts(Request $request)
+{
+    $callerId = (int) $request->user()->id;
+ 
+    $drafts = Aggriment::with(['party1', 'party2', 'category', 'subCategory', 'language', 'attributes.categoryAttribute'])
+        ->where('is_draft', 1)
+        ->where(function ($q) use ($callerId) {
+            $q->where('party_1_id', $callerId)->orWhere('party_2_id', $callerId);
+        })
+        // Belt-and-suspenders: even if the hourly cleanup job hasn't run
+        // yet, don't hand back a draft that's already past its 24h life.
+        ->where('created_at', '>=', now()->subHours(24))
+        ->orderByDesc('id')
+        ->get();
+ 
+    return response()->json([
+        'status'  => true,
+        'message' => $drafts->isEmpty() ? 'No drafts found' : 'Drafts fetched successfully',
+        'data'    => $drafts,
+    ]);
+}
 }

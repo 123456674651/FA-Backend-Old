@@ -56,6 +56,9 @@ use App\Models\Sceme;
 Route::post('auth/firebase-exchange', [AuthApiController::class, 'firebaseExchange']);
 Route::get('auth/exists', [AuthApiController::class, 'exists']);
 
+// TEMPORARY dev/Postman login — no Firebase, disabled in production. Remove later.
+Route::post('auth/dev-login', [AuthApiController::class, 'devLogin']);
+
 // Catalogue and reference data. All read-only; the write halves live in the
 // admin group at the bottom of this file.
 Route::get('/deal_categories', [DealCategoryController::class, 'index'])->name('api.dealCategories.index');
@@ -160,6 +163,7 @@ Route::middleware('auth.jwt')->group(function () {
     // may re-upload party, Aadhaar or vehicle images. Parties, category and
     // language are fixed at creation — the handler refuses to change them.
     Route::post('/update_aggriment/v1', [PhpWordController::class, 'update_aggriment']);
+    Route::get('agreements/drafts', [PhpWordController::class, 'drafts']);
     Route::post('/convert_Word_to_pdf/v1', [PhpWordController::class, 'convertWordToPdf']);
     Route::post('create_aggriment', [PDFController::class, 'create_aggriment']);
     Route::post('list_aggriment', [PDFController::class, 'list_aggriment']);
