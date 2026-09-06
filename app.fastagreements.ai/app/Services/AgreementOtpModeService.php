@@ -102,12 +102,26 @@ class AgreementOtpModeService
         //
         // The UNIQUE index is what actually enforces this. Two requests
         // carrying the same token can both pass a SELECT; only one can insert.
+        //
+        // Deliberately not inside an enclosing transaction: a rollback would
+        // take this claim with it and hand the token back its validity.
         try {
             DB::table('used_phone_tokens')->insert([
                 'provider_ref' => $providerRef,
                 'used_at' => $verifiedAt,
             ]);
-        } catch (QueryException) {
+        } catch (QueryException $e) {
+            // 1062 is MySQL's duplicate-key errno: the token really was already
+            // spent. Anything else is a genuine fault — a missing table, a
+            // deadlock, a lost connection — and must not be dressed up as a
+            // spent token. Deploying without this migration would otherwise
+            // take party verification down entirely while telling every
+            // customer their code was already used, with nothing in the log
+            // to say otherwise.
+            if (($e->errorInfo[1] ?? null) !== 1062) {
+                throw $e;
+            }
+
             throw new PartyVerificationException(
                 422,
                 'TOKEN_ALREADY_USED',
@@ -117,7 +131,17 @@ class AgreementOtpModeService
 
         PartyPhoneVerification::updateOrCreate(
             ['customer_id' => $customerId, 'mobile' => $mobile],
-            ['provider_ref' => $providerRef, 'verified_at' => $verifiedAt],
+            [
+                'provider_ref' => $providerRef,
+                // Explicit, not omitted: updateOrCreate only writes the keys it
+                // is given, so re-confirming a number that was verified through
+                // Firebase would otherwise keep the old uid alongside the new
+                // provider_ref — and snapshotForAgreement would copy both onto
+                // the agreement, attaching evidence of an older, different
+                // verification to this one.
+                'firebase_uid' => null,
+                'verified_at' => $verifiedAt,
+            ],
         );
 
         return ['mobile' => $mobile, 'verified_at' => $verifiedAt];
@@ -259,11 +283,17 @@ class AgreementOtpModeService
                     'verified_at' => $proof?->verified_at,
                     'firebase_uid' => $proof?->firebase_uid,
                     'provider_ref' => $proof?->provider_ref,
-                    'verified_via' => $proof !== null
-                        ? ($proof->provider_ref !== null
-                            ? AgreementPartyVerification::VIA_MSG91
-                            : AgreementPartyVerification::VIA_FIREBASE)
-                        : AgreementPartyVerification::VIA_NONE,
+                    'verified_via' => match (true) {
+                        $proof === null => AgreementPartyVerification::VIA_NONE,
+                        $proof->provider_ref !== null => AgreementPartyVerification::VIA_MSG91,
+                        $proof->firebase_uid !== null => AgreementPartyVerification::VIA_FIREBASE,
+                        // A proof with neither reference is not evidence of
+                        // anything — don't stamp a permanent record on the
+                        // basis of nothing. Unreachable today (every stored
+                        // row carries one or the other), but the check exists
+                        // so a future gap in that invariant fails safe.
+                        default => AgreementPartyVerification::VIA_NONE,
+                    },
                 ],
             );
         }

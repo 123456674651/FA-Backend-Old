@@ -98,4 +98,45 @@ class PartyVerificationTest extends TestCase
             ->postJson('/api/party-verifications/firebase', ['id_token' => 't'])
             ->assertStatus(404);
     }
+
+    public function test_reconfirming_a_legacy_firebase_number_clears_its_uid(): void
+    {
+        DB::table('party_phone_verifications')->insert([
+            'customer_id' => $this->customerId,
+            'mobile' => '9888800004',
+            'firebase_uid' => 'old-firebase-uid',
+            'provider_ref' => null,
+            'verified_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->verifier->willReturn('req-4', '919888800004');
+        $this->verify('token-4')->assertOk();
+
+        $this->assertDatabaseHas('party_phone_verifications', [
+            'customer_id' => $this->customerId,
+            'mobile' => '9888800004',
+            'provider_ref' => 'req-4',
+            'firebase_uid' => null,
+        ]);
+    }
+
+    public function test_a_token_cannot_be_replayed_by_a_different_customer(): void
+    {
+        $this->verifier->willReturn('req-5', '919888800005');
+        $this->verify('token-5')->assertOk();
+
+        $otherCustomerId = DB::table('customers')->insertGetId([
+            'name' => 'Other', 'mobile' => '9000002222', 'address' => '', 'is_active' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $otherJwt = app(JwtService::class)->issueForCustomer($otherCustomerId);
+
+        $this->verifier->willReturn('req-5', '919888800005');
+        $this->withHeader('Authorization', 'Bearer ' . $otherJwt)
+            ->postJson('/api/party-verifications/msg91', ['access_token' => 'token-5'])
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'TOKEN_ALREADY_USED');
+    }
 }
