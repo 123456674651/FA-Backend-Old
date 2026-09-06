@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Services\Auth\Msg91TokenVerifier;
 use App\Services\Auth\Msg91UnavailableException;
 use App\Services\Auth\PhoneVerificationException;
+use App\Support\MobileNumber;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
@@ -40,6 +41,33 @@ class Msg91TokenVerifierTest extends TestCase
     }
 
     /**
+     * The success envelope's exact formatting is still unobserved (see the
+     * task brief), and MobileNumber exists specifically to absorb numbers
+     * written with spaces and hyphens. The identifier check must reject on
+     * content (a sentence, an email), never on formatting like this — or the
+     * first real verification MSG91 ever answers could turn into a false,
+     * logged outage.
+     */
+    #[DataProvider('separatorFormattedIdentifiers')]
+    public function test_separator_formatted_identifiers_are_accepted(string $identifier): void
+    {
+        Http::fake([self::URL => Http::response(['message' => $identifier, 'type' => 'success'])]);
+
+        $identity = $this->verifier()->verify('a-token');
+
+        $this->assertSame('9876543210', MobileNumber::toStored($identity['phone_number']));
+    }
+
+    /** @return array<string, array{0: string}> */
+    public static function separatorFormattedIdentifiers(): array
+    {
+        return [
+            'a plus and a space' => ['+91 9876543210'],
+            'a hyphen' => ['91-9876543210'],
+        ];
+    }
+
+    /**
      * `uid` feeds Task 7's replay guard, which is keyed on it behind a UNIQUE
      * index that is never pruned. If `uid` were the phone number, a
      * customer's second legitimate verification of their own number would
@@ -58,6 +86,22 @@ class Msg91TokenVerifierTest extends TestCase
         $this->assertSame($first['phone_number'], $second['phone_number']);
         $this->assertNotSame($first['uid'], $second['uid']);
         $this->assertStringNotContainsString('9876543210', $first['uid']);
+    }
+
+    /**
+     * Determinism is what makes the replay guard work at all: re-presenting
+     * one token must collide on provider_ref. Uniqueness alone (the test
+     * above) would also pass for a random or salted uid, which would let
+     * every replay through silently — this is the other half of the contract.
+     */
+    public function test_the_same_token_always_yields_the_same_uid(): void
+    {
+        Http::fake([self::URL => Http::response(['message' => '919876543210', 'type' => 'success'])]);
+
+        $first = $this->verifier()->verify('the-same-token');
+        $second = $this->verifier()->verify('the-same-token');
+
+        $this->assertSame($first['uid'], $second['uid']);
     }
 
     public function test_it_sends_the_key_in_the_body_under_the_hyphenated_field(): void

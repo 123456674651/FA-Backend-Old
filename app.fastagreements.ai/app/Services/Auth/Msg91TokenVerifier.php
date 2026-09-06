@@ -2,7 +2,6 @@
 
 namespace App\Services\Auth;
 
-use App\Support\MobileNumber;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -67,29 +66,31 @@ class Msg91TokenVerifier implements PhoneIdentityVerifier
 
         $identifier = trim((string) ($response['message'] ?? ''));
 
-        // Must BE a number, not merely contain one: MobileNumber::toStored()
-        // takes the last ten digits of whatever it is given, so a sentence
-        // ("Your number 9876543210 was verified on...") or a numeric MSG91
-        // request id would otherwise be silently accepted as a verified
-        // mobile and used to auto-provision a customer at a fabricated number.
-        if (!preg_match('/^\+?\d{10,15}$/', $identifier)) {
-            Log::error('MSG91 verified a token but returned no usable number: ' . json_encode($response));
+        // Reject on content, not formatting. A sentence like "Your number
+        // 9876543210 was verified on 2026-09-06" must not pass —
+        // MobileNumber::toStored takes the LAST TEN digits of whatever it is
+        // handed, so that one would yield 4320260906 and be silently accepted
+        // as a verified mobile.
+        //
+        // But separators must pass: MobileNumber exists to absorb numbers
+        // written with spaces and hyphens, and the success envelope's exact
+        // formatting is still unobserved (no real verification has been
+        // captured yet — see the task brief). A check that rejects
+        // "+91 9876543210" would turn every real verification into a false,
+        // logged outage the moment this ships.
+        $digits = preg_replace('/[\s\-()]/', '', $identifier);
+
+        if (!preg_match('/^\+?\d{10,15}$/', $digits)) {
+            Log::error('MSG91 returned an identifier that is not a phone number: ' . json_encode($response));
 
             throw new Msg91TokenException('That verification did not confirm a phone number.');
         }
 
-        $mobile = MobileNumber::toStored($identifier);
-
-        // A success carrying no usable number is not something to work around.
-        // Falling back to anything the client sent would quietly reduce this
-        // whole mechanism to "the app said so", which is the one thing it
-        // exists to prevent.
-        if (strlen($mobile) !== 10) {
-            Log::error('MSG91 verified a token but returned no usable number: ' . json_encode($response));
-
-            throw new Msg91TokenException('That verification did not confirm a phone number.');
-        }
-
+        // No further length check is needed: $digits is already all-digit
+        // (plus an optional leading +) and 10-15 characters long, so
+        // MobileNumber::toStored's "last ten digits" will always yield
+        // exactly ten. A second check here would be dead code with a
+        // log line indistinguishable from the one above.
         return ['uid' => hash('sha256', $token), 'phone_number' => $identifier];
     }
 
