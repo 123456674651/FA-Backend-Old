@@ -101,14 +101,12 @@ private function imageToBase64($relativePath)
         return null;
     }
 
-    $fullPath = public_path($relativePath);
-
-    if (!file_exists($fullPath)) {
-        \Log::error("Image not found: " . $fullPath);
+    if (!Storage::disk('s3')->exists($relativePath)) {
+        \Log::error("Image not found on S3: " . $relativePath);
         return null;
     }
 
-    return base64_encode(file_get_contents($fullPath));
+    return base64_encode(Storage::disk('s3')->get($relativePath));
 }
 function indianMoneyFormat($number)
 {
@@ -1297,12 +1295,19 @@ if (!empty($sub_catgory)) {
 
         Aggriment::whereKey($request->integer('agreement_id'))->update(['documents' => $pdfName]);
 
+        // LibreOffice only writes to local disk, so upload the finished PDF
+        // to S3 here for durable, permanent storage — the local copy in
+        // public/agreement_pdfs is left in place as a fast-path cache
+        // (see resolveAgreementPdfPath / preview / download below).
+        $s3Key = 'agreement_pdfs/' . $pdfName;
+        Storage::disk('s3')->put($s3Key, file_get_contents($pdfPath), 'public');
+
         return response()->json([
             'status' => true,
             'message' => 'PDF generated successfully.',
             'output' => $output,
             'pdf_name' => $pdfName,
-            'pdf_url' => asset('agreement_pdfs/' . $pdfName),
+            'pdf_url' => Storage::disk('s3')->url($s3Key),
         ]);
     } catch (\Throwable $exception) {
         Log::error('Agreement PDF conversion crashed.', ['agreement_id' => $request->agreement_id, 'filename' => $filename, 'exception' => $exception]);
@@ -1320,6 +1325,16 @@ if (!empty($sub_catgory)) {
 
 public function preview($file)
 {
+    $name = basename((string) $file);
+    $s3Key = 'agreement_pdfs/' . $name;
+
+    if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) === 'pdf' && Storage::disk('s3')->exists($s3Key)) {
+        return response(Storage::disk('s3')->get($s3Key), 200, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+
+    // Fallback for PDFs generated before the S3 migration.
     $path = $this->resolveAgreementPdfPath($file);
 
     if ($path === null) {
@@ -1334,6 +1349,17 @@ public function preview($file)
 
   public function download($file)
 {
+    $name = basename((string) $file);
+    $s3Key = 'agreement_pdfs/' . $name;
+
+    if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) === 'pdf' && Storage::disk('s3')->exists($s3Key)) {
+        return response(Storage::disk('s3')->get($s3Key), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $name . '"',
+        ]);
+    }
+
+    // Fallback for PDFs generated before the S3 migration.
     $path = $this->resolveAgreementPdfPath($file);
 
     if ($path === null) {
@@ -1493,6 +1519,19 @@ private function resolveAgreementPdfPath($file): ?string
       $localPath = Storage::disk('local')->path(ltrim($storedPath, '/'));
       if (is_file($localPath)) {
           return $localPath;
+      }
+
+      // Last resort: the local copy is missing (server migration, fresh
+      // deploy, etc.) but DocumentController mirrors every template to S3
+      // as a durable backup — recover it into a local temp file so
+      // PhpWord's TemplateProcessor (which needs a real path) can read it.
+      if (Storage::disk('s3')->exists($storedPath)) {
+          $recoveredPath = storage_path('app/tmp/' . basename($storedPath));
+          if (!is_dir(dirname($recoveredPath))) {
+              mkdir(dirname($recoveredPath), 0755, true);
+          }
+          file_put_contents($recoveredPath, Storage::disk('s3')->get($storedPath));
+          return $recoveredPath;
       }
 
       throw new \RuntimeException('Document template not found: ' . $storedPath);
@@ -1924,4 +1963,35 @@ private function resolveAgreementPdfPath($file): ?string
 			'all_matches' => $languageMatches,
 		];
 	}
+
+	/**
+
+ * Returns the caller's own draft agreements (is_draft = 1), not yet expired
+ * (created within the last 24 hours — matches the cleanup job's window),
+ * with every relation the create/edit form needs to prefill itself.
+ *
+ * Ordered newest first, so $data[0] is the draft to resume by default if
+ * the app only ever keeps one in-progress draft per user.
+ */
+public function drafts(Request $request)
+{
+    $callerId = (int) $request->user()->id;
+ 
+    $drafts = Aggriment::with(['party1', 'party2', 'category', 'subCategory', 'language', 'attributes.categoryAttribute'])
+        ->where('is_draft', 1)
+        ->where(function ($q) use ($callerId) {
+            $q->where('party_1_id', $callerId)->orWhere('party_2_id', $callerId);
+        })
+        // Belt-and-suspenders: even if the hourly cleanup job hasn't run
+        // yet, don't hand back a draft that's already past its 24h life.
+        ->where('created_at', '>=', now()->subHours(24))
+        ->orderByDesc('id')
+        ->get();
+ 
+    return response()->json([
+        'status'  => true,
+        'message' => $drafts->isEmpty() ? 'No drafts found' : 'Drafts fetched successfully',
+        'data'    => $drafts,
+    ]);
+}
 }

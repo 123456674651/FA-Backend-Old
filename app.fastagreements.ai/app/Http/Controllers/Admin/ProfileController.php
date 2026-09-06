@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Traits\UploadsToS3;
 
 class ProfileController extends Controller
 {
+    use UploadsToS3;
+
     /**
      * Display the admin profile.
      */
@@ -81,23 +84,15 @@ class ProfileController extends Controller
         if ($request->hasFile('profile_picture')) {
             $image = $request->file('profile_picture');
             $fileName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-            $destinationPath = public_path('/uploads/profile');
 
-            // Create directory if it doesn't exist
-            if (!file_exists($destinationPath)) {
-                mkdir($destinationPath, 0755, true);
-            }
+            // Delete old profile picture if exists (strip any leading slash
+            // from the old-style path before treating it as an S3 key)
+            $this->deleteFromS3(ltrim($user->profile_picture ?? '', '/'));
 
-            // Move the file
-            $image->move($destinationPath, $fileName);
-
-            // Delete old profile picture if exists
-            if ($user->profile_picture && file_exists(public_path($user->profile_picture))) {
-                @unlink(public_path($user->profile_picture));
-            }
+            $path = $this->uploadToS3($image, 'uploads/profile', $fileName);
 
             $user->update([
-                'profile_picture' => '/uploads/profile/' . $fileName,
+                'profile_picture' => $path,
             ]);
         }
 
@@ -111,9 +106,7 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->profile_picture && file_exists(public_path($user->profile_picture))) {
-            @unlink(public_path($user->profile_picture));
-        }
+        $this->deleteFromS3(ltrim($user->profile_picture ?? '', '/'));
 
         $user->update([
             'profile_picture' => null,
@@ -130,18 +123,10 @@ class ProfileController extends Controller
 
         if ($request->hasFile('logo')) {
             $image = $request->file('logo');
-            
-            // Define path
-            $destinationPath = public_path('assets/img/logo');
-            $fileName = 'dashboard_logo.png';
 
-            // Ensure directory exists
-            if (!file_exists($destinationPath)) {
-                mkdir($destinationPath, 0755, true);
-            }
-
-            // Move the file (overwriting dashboard_logo.png)
-            $image->move($destinationPath, $fileName);
+            // Fixed filename, always overwrites the previous logo on S3
+            // (matches the old behaviour of overwriting dashboard_logo.png).
+            $this->uploadToS3($image, 'assets/img/logo', 'dashboard_logo.png');
         }
 
         return redirect()->back()->with('success', 'Dashboard logo updated successfully.');

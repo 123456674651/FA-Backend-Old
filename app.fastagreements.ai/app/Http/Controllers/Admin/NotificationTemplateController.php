@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Traits\UploadsToS3;
 use App\Models\NotificationTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class NotificationTemplateController extends Controller
 {
+    use UploadsToS3;
+
     /**
      * Display a listing of the resource.
      */
@@ -82,8 +85,7 @@ class NotificationTemplateController extends Controller
         if ($request->hasFile('image_file')) {
             $file = $request->file('image_file');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/notifications'), $filename);
-            $data['image'] = 'uploads/notifications/' . $filename;
+            $data['image'] = $this->uploadToS3($file, 'uploads/notifications', $filename);
         }
 
         NotificationTemplate::create($data);
@@ -140,14 +142,11 @@ class NotificationTemplateController extends Controller
 
         if ($request->hasFile('image_file')) {
             // Delete old image if exists
-            if (!empty($notificationTemplate->image) && file_exists(public_path($notificationTemplate->image))) {
-                @unlink(public_path($notificationTemplate->image));
-            }
+            $this->deleteFromS3($notificationTemplate->image);
 
             $file = $request->file('image_file');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/notifications'), $filename);
-            $data['image'] = 'uploads/notifications/' . $filename;
+            $data['image'] = $this->uploadToS3($file, 'uploads/notifications', $filename);
         }
 
         $notificationTemplate->update($data);
@@ -161,9 +160,7 @@ class NotificationTemplateController extends Controller
      */
     public function destroy(NotificationTemplate $notificationTemplate)
     {
-        if (!empty($notificationTemplate->image) && file_exists(public_path($notificationTemplate->image))) {
-            @unlink(public_path($notificationTemplate->image));
-        }
+        $this->deleteFromS3($notificationTemplate->image);
 
         $notificationTemplate->delete();
 

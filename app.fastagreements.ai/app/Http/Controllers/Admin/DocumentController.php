@@ -82,6 +82,13 @@ class DocumentController extends Controller
                     'document' => 'The document could not be saved on the server. Please try again.',
                 ]);
             }
+
+            // Templates are read via ZipArchive/PhpWord, which need a real
+            // local file, so the local copy above stays authoritative. This
+            // mirror to S3 is purely for durable backup — if the local disk
+            // is ever lost (server migration, redeploy), the template can
+            // still be recovered from S3 (see resolveDocumentTemplatePath).
+            Storage::disk('s3')->put($folderPath . '/' . $fileName, file_get_contents($docx), 'public');
         } finally {
             $this->converter->discard($docx);
         }
@@ -306,6 +313,7 @@ class DocumentController extends Controller
             // Remove the superseded file only once the new one is in place.
             if ($document->file_path && $document->file_path !== $fullPath) {
                 Storage::delete($document->file_path);
+                Storage::disk('s3')->delete($document->file_path);
             }
         } else {
             $fullPath = $document->file_path; // keep existing
@@ -333,6 +341,7 @@ class DocumentController extends Controller
     {
         $document = Document::findOrFail($id);
         Storage::delete($document->file_path);
+        Storage::disk('s3')->delete($document->file_path);
         $document->delete();
         return back()->with('success', 'Document deleted successfully.');
     }

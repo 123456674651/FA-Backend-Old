@@ -20,7 +20,7 @@
             <div class="card-body p-4">
                 <div class="row">
                     <div class="col-md-3 text-center">
-                        <img src="{{ $user->profile_picture ? asset($user->profile_picture) : asset('assets/img/logo/logo.jpeg') }}" class="img-thumbnail rounded" style="max-height:150px; object-fit:cover;">
+                        <img src="{{ s3_asset_or($user->profile_picture, asset('assets/img/logo/logo.jpeg')) }}" class="img-thumbnail rounded" style="max-height:150px; object-fit:cover;">
                     </div>
                     <div class="col-md-9">
                         <h4>{{ $user->name }}</h4>

@@ -72,7 +72,7 @@
                                     <td class="text-center">{{ $temp->id }}</td>
                                     <td class="text-center">
                                         @if($temp->image)
-                                            <img src="{{ asset($temp->image) }}" class="rounded shadow-sm" style="width: 60px; height: 40px; object-fit: cover;">
+                                            <img src="{{ s3_asset($temp->image) }}" class="rounded shadow-sm" style="width: 60px; height: 40px; object-fit: cover;">
                                         @else
                                             <span class="text-muted small">No Image</span>
                                         @endif

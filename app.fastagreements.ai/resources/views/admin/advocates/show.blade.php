@@ -30,8 +30,8 @@
                         <!-- Profile Image and Info Header -->
                         <div class="d-flex flex-column flex-md-row align-items-center align-items-md-end text-center text-md-start" style="margin-top: -65px;">
                             <div class="mb-3 mb-md-0 me-md-4 position-relative">
-                                @if($advocate->image && file_exists(public_path($advocate->image)))
-                                    <img src="{{ asset($advocate->image) }}" alt="Profile" class="rounded-circle border border-4 border-white shadow" style="width: 130px; height: 130px; object-fit: cover; background-color: #fff;">
+                                @if(!empty($advocate->image))
+                                    <img src="{{ s3_asset($advocate->image) }}" alt="Profile" class="rounded-circle border border-4 border-white shadow" style="width: 130px; height: 130px; object-fit: cover; background-color: #fff;">
                                 @else
                                     <img src="{{ asset('assets/img/profile-img.jpg') }}" alt="Profile" class="rounded-circle border border-4 border-white shadow" style="width: 130px; height: 130px; object-fit: cover; background-color: #fff;">
                                 @endif
@@ -109,7 +109,7 @@
                 <div class="card border-0 shadow-sm mb-4" style="border-radius: 10px;">
                     <div class="card-body p-4">
                         <h5 class="card-title fw-bold text-dark mb-3" style="font-size: 18px;"><i class="bi bi-file-earmark-check-fill me-2 text-primary"></i>Verification Document</h5>
-                        @if($advocate->document && file_exists(public_path($advocate->document)))
+                        @if(!empty($advocate->document))
                             <div class="p-3 border rounded d-flex align-items-center justify-content-between bg-light">
                                 <div class="d-flex align-items-center">
                                     <i class="bi bi-file-earmark-pdf-fill text-danger fs-2 me-3"></i>
@@ -118,7 +118,7 @@
                                         <div class="text-muted small">Verification Certificate</div>
                                     </div>
                                 </div>
-                                <a href="{{ asset($advocate->document) }}" download class="btn btn-success px-4" style="border-radius: 8px;">
+                                <a href="{{ s3_asset($advocate->document) }}" download class="btn btn-success px-4" style="border-radius: 8px;">
                                     <i class="bi bi-cloud-arrow-down-fill me-1.5"></i>Download
                                 </a>
                             </div>
@@ -185,10 +185,10 @@
                 <div class="card border-0 shadow-sm mb-4" style="border-radius: 10px;">
                     <div class="card-body p-4">
                         <h5 class="card-title fw-bold text-dark mb-3" style="font-size: 18px;"><i class="bi bi-play-btn-fill me-2 text-primary"></i>Introductory Video</h5>
-                        @if($advocate->video && file_exists(public_path($advocate->video)))
+                        @if(!empty($advocate->video))
                             <div class="ratio ratio-16x9 overflow-hidden rounded shadow-sm border border-2 border-white">
                                 <video width="100%" controls class="rounded">
-                                    <source src="{{ asset($advocate->video) }}" type="video/mp4">
+                                    <source src="{{ s3_asset($advocate->video) }}" type="video/mp4">
                                     Your browser does not support the video tag.
                                 </video>
                             </div>

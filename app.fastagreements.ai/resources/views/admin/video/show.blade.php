@@ -37,7 +37,7 @@
                         @if($video->file_name)
                             <div class="mb-3">
                                 <video width="640" height="360" controls>
-                                    <source src="{{ asset('admin/video/' . $video->file_name) }}" type="video/mp4">
+                                    <source src="{{ s3_asset('admin/video/' . $video->file_name) }}" type="video/mp4">
                                     Your browser does not support the video tag.
                                 </video>
                             </div>

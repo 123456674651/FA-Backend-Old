@@ -7,6 +7,7 @@ use App\Models\NotificationHistory;
 use App\Models\NotificationHistoryUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class NotificationHistoryController extends Controller
@@ -160,11 +161,11 @@ class NotificationHistoryController extends Controller
         $log = NotificationHistory::findOrFail($id);
         
         // Delete uploaded notification image if custom uploaded
-        if (!empty($log->image) && file_exists(public_path($log->image))) {
+        if (!empty($log->image) && Storage::disk('s3')->exists($log->image)) {
             // Only delete if it's not referenced by a template
             $isReferencedByTemplate = \App\Models\NotificationTemplate::where('image', $log->image)->exists();
             if (!$isReferencedByTemplate) {
-                @unlink(public_path($log->image));
+                Storage::disk('s3')->delete($log->image);
             }
         }
 

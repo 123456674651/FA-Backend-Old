@@ -79,7 +79,7 @@
                                     <!-- Preview block -->
                                     <div class="mt-2">
                                         <img id="featured_image_preview" 
-                                             src="{{ $cmsPage->featured_image ? asset('storage/cms/' . $cmsPage->featured_image) : '' }}" 
+                                             src="{{ s3_asset('cms/' . $cmsPage->featured_image) ?: '' }}" 
                                              alt="Featured Image Preview" 
                                              style="max-height: 150px; {{ $cmsPage->featured_image ? '' : 'display: none;' }}" 
                                              class="img-thumbnail">

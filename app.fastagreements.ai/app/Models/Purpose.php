@@ -21,6 +21,6 @@ class Purpose extends Model
 
     public function getPurposeImageUrlAttribute()
     {
-        return asset('admin/images/purpose_image_thumb/' . $this->purpose_image);
+        return s3_asset('admin/images/purpose_image_thumb/' . $this->purpose_image);
     }
 }

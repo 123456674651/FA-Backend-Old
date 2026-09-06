@@ -6,11 +6,19 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use App\Models\Slider;
+use App\Traits\UploadsToS3;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
 
 class SliderController extends Controller
 {
+    use UploadsToS3;
+
+    // Folder on S3 where slider images live — DB keeps storing just the
+    // filename (unchanged convention), this constant is used to build the
+    // full S3 path for upload/delete.
+    private const SLIDER_FOLDER = 'admin/images/sliders';
+
     // Create a new slider
     public function store(Request $request)
     {
@@ -23,10 +31,9 @@ class SliderController extends Controller
                 'slider_type' => 'required|string|in:onboarding,home', // Validate type
             ]);
 
-            // Store the uploaded image
+            // Store the uploaded image on S3
             $imageName = time() . '_' . $request->file('image')->getClientOriginalName();
-            $destinationPath = public_path('admin/images/sliders'); // Updated path
-            $request->file('image')->move($destinationPath, $imageName);
+            $this->uploadToS3($request->file('image'), self::SLIDER_FOLDER, $imageName);
 
             // Create the slider
             $slider = Slider::create([
@@ -123,9 +130,13 @@ class SliderController extends Controller
             $slider = Slider::findOrFail($id);
 
             if ($request->hasFile('image')) {
+                // delete old image from S3 before uploading the new one
+                if ($slider->image) {
+                    $this->deleteFromS3(self::SLIDER_FOLDER . '/' . $slider->image);
+                }
+
                 $imageName = time() . '_' . $request->file('image')->getClientOriginalName();
-                $destinationPath = public_path('admin/images/sliders'); // Updated path
-                $request->file('image')->move($destinationPath, $imageName);
+                $this->uploadToS3($request->file('image'), self::SLIDER_FOLDER, $imageName);
                 $validatedData['image'] = $imageName; // Update the image path
             }
 
@@ -162,13 +173,8 @@ class SliderController extends Controller
         try {
             $slider = Slider::findOrFail($id);
 
-            // Get the path to the image
-            $imagePath = public_path('admin/images/sliders/' . $slider->image);
-
-            // Check if the image file exists and delete it
-            if (file_exists($imagePath)) {
-                unlink($imagePath); // Delete the file
-            }
+            // Delete the image from S3
+            $this->deleteFromS3(self::SLIDER_FOLDER . '/' . $slider->image);
 
             $slider->delete();
 

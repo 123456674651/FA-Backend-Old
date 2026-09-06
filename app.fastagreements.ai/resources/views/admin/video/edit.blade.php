@@ -43,7 +43,7 @@
                                 <div class="col-sm-10">
                                     <input type="file" class="form-control" id="videoFile" name="video_file" accept="video/*" />
                                     @if($video->file_name)
-                                        <p>Current video: <a href="{{ asset('admin/video/' . $video->file_name) }}" target="_blank">Watch Video</a></p>
+                                        <p>Current video: <a href="{{ s3_asset('admin/video/' . $video->file_name) }}" target="_blank">Watch Video</a></p>
                                     @endif
                                 </div>
                             </div> --}}
@@ -55,7 +55,7 @@
                                     
                                     @if($video->file_name)
                                         <!-- Existing video link -->
-                                        <p>Current video: <a href="{{ asset('admin/video/' . $video->file_name) }}" target="_blank">Watch Video</a></p>
+                                        <p>Current video: <a href="{{ s3_asset('admin/video/' . $video->file_name) }}" target="_blank">Watch Video</a></p>
                                     @endif
                                     
                                     <!-- Video player for selected video -->

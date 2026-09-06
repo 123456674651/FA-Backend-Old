@@ -56,13 +56,13 @@ class Aggriment extends Model
 
    public function getPartyOneImageUrlAttribute()
    {
-      return asset('admin/images/person_images_thumb/' . $this->party_1_image);
+      return s3_asset('admin/images/person_images_thumb/' . $this->party_1_image);
 
    }
 
    public function getPartyTwoImageUrlAttribute()
    {
-      return asset('admin/images/person_images_thumb/' . $this->party_2_image);
+      return s3_asset('admin/images/person_images_thumb/' . $this->party_2_image);
 
    }
   

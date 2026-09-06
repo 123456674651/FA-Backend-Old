@@ -13,10 +13,13 @@ use Yajra\DataTables\DataTables;
 use App\Models\Customer;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Traits\UploadsToS3;
 use Exception;
 
 class DealController extends Controller
 {
+    use UploadsToS3;
+
     /**
      * Display a listing of the resource.
      */
@@ -124,24 +127,18 @@ class DealController extends Controller
         // Handle video recording upload
         if ($request->hasFile('video_recording')) {
             $video = $request->file('video_recording');
-            $videoPath = 'admin/dealVideo/' . $video->getClientOriginalName();
-            $video->move(public_path('admin/dealVideo'), $videoPath);
-            $deal->video_recording = $videoPath;
+            $deal->video_recording = $this->uploadToS3($video, 'admin/dealVideo', $video->getClientOriginalName());
         }
 
         // Handle audio recording upload
         if ($request->hasFile('audio_recording')) {
             $audio = $request->file('audio_recording');
-            $audioPath = 'admin/dealAudio/' . $audio->getClientOriginalName();
-            $audio->move(public_path('admin/dealAudio'), $audioPath);
-            $deal->audio_recording = $audioPath;
+            $deal->audio_recording = $this->uploadToS3($audio, 'admin/dealAudio', $audio->getClientOriginalName());
         }
 
         if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $imagePath = 'admin/dealImage/' . $image->getClientOriginalName();
-            $image->move(public_path('admin/dealImage'), $imagePath);
-            $deal->images = $imagePath;
+            $deal->images = $this->uploadToS3($image, 'admin/dealImage', $image->getClientOriginalName());
         }
 
         // Save any changes to the deal
@@ -225,37 +222,25 @@ class DealController extends Controller
         // Handle video recording upload
         if ($request->hasFile('video_recording')) {
             // Delete old file if needed
-            if ($deal->video_recording && file_exists(public_path($deal->video_recording))) {
-                unlink(public_path($deal->video_recording));
-            }
+            $this->deleteFromS3($deal->video_recording);
             $video = $request->file('video_recording');
-            $videoPath = 'admin/dealVideo/' . $video->getClientOriginalName();
-            $video->move(public_path('admin/dealVideo'), $videoPath);
-            $deal->video_recording = $videoPath;
+            $deal->video_recording = $this->uploadToS3($video, 'admin/dealVideo', $video->getClientOriginalName());
         }
 
         // Handle audio recording upload
         if ($request->hasFile('audio_recording')) {
             // Delete old file if needed
-            if ($deal->audio_recording && file_exists(public_path($deal->audio_recording))) {
-                unlink(public_path($deal->audio_recording));
-            }
+            $this->deleteFromS3($deal->audio_recording);
             $audio = $request->file('audio_recording');
-            $audioPath = 'admin/dealAudio/' . $audio->getClientOriginalName();
-            $audio->move(public_path('admin/dealAudio'), $audioPath);
-            $deal->audio_recording = $audioPath;
+            $deal->audio_recording = $this->uploadToS3($audio, 'admin/dealAudio', $audio->getClientOriginalName());
         }
 
         // Handle image upload
         if ($request->hasFile('image')) {
             // Delete old file if needed
-            if ($deal->images && file_exists(public_path($deal->images))) {
-                unlink(public_path($deal->images));
-            }
+            $this->deleteFromS3($deal->images);
             $image = $request->file('image');
-            $imagePath = 'admin/dealImage/' . $image->getClientOriginalName();
-            $image->move(public_path('admin/dealImage'), $imagePath);
-            $deal->images = $imagePath;
+            $deal->images = $this->uploadToS3($image, 'admin/dealImage', $image->getClientOriginalName());
         }
 
         // Save any changes to the deal
@@ -271,17 +256,9 @@ class DealController extends Controller
         $deal = Deal::findOrFail($id);
 
         // Delete associated files if they exist
-        if ($deal->video_recording && file_exists(public_path($deal->video_recording))) {
-            unlink(public_path($deal->video_recording));
-        }
-
-        if ($deal->audio_recording && file_exists(public_path($deal->audio_recording))) {
-            unlink(public_path($deal->audio_recording));
-        }
-
-        if ($deal->image && file_exists(public_path($deal->image))) {
-            unlink(public_path($deal->image));
-        }
+        $this->deleteFromS3($deal->video_recording);
+        $this->deleteFromS3($deal->audio_recording);
+        $this->deleteFromS3($deal->image);
 
         // Delete the deal record
         $deal->delete();

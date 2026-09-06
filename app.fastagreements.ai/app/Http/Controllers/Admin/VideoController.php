@@ -6,10 +6,15 @@ use Illuminate\Http\Request;
 use App\Models\Video;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\File;
+use App\Traits\UploadsToS3;
 use Yajra\DataTables\DataTables;
 
 class VideoController extends Controller
 {
+    use UploadsToS3;
+
+    private const VIDEO_FOLDER = 'admin/video';
+
 
     public function index()
     {
@@ -76,8 +81,7 @@ class VideoController extends Controller
             // Store the new video file
             $videoFile = $request->file('video_file');
             $fileName = time() . '.' . $videoFile->getClientOriginalExtension();
-            $destinationPath = public_path('admin/video');
-            $videoFile->move($destinationPath, $fileName);
+            $this->uploadToS3($videoFile, self::VIDEO_FOLDER, $fileName);
 
             // Create a new video record
             $video = new Video();
@@ -116,16 +120,12 @@ class VideoController extends Controller
         // Handle the file upload
         if ($request->hasFile('video_file')) {
             // Delete the old video file if exists
-            $oldFilePath = public_path('admin/video/' . $video->file_name);
-            if (file_exists($oldFilePath)) {
-                unlink($oldFilePath);
-            }
+            $this->deleteFromS3(self::VIDEO_FOLDER . '/' . $video->file_name);
 
             // Store the new video file
             $videoFile = $request->file('video_file');
             $fileName = time() . '.' . $videoFile->getClientOriginalExtension();
-            $destinationPath = public_path('admin/video');
-            $videoFile->move($destinationPath, $fileName);
+            $this->uploadToS3($videoFile, self::VIDEO_FOLDER, $fileName);
 
             // Update the file name in the video model
             $video->file_name = $fileName;
@@ -156,13 +156,8 @@ class VideoController extends Controller
         // Fetch the video by its ID
         $video = Video::findOrFail($id);
 
-        // Determine the path to the video file
-        $filePath = public_path('admin/video/' . $video->file_name);
-
-        // Check if the file exists and delete it
-        if (File::exists($filePath)) {
-            File::delete($filePath);
-        }
+        // Delete the video file from S3
+        $this->deleteFromS3(self::VIDEO_FOLDER . '/' . $video->file_name);
 
         // Delete the video record from the database
         $video->delete();

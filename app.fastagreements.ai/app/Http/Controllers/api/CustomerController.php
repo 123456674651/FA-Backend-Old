@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Customer;
 use App\Models\State;
 use App\Traits\ImageResizer;
+use App\Traits\UploadsToS3;
 use App\Models\Country;
 use App\Models\City;
 use Illuminate\Support\Facades\Validator;
@@ -22,6 +23,7 @@ use App\Models\Feed;
 class CustomerController extends Controller
 {
     use ImageResizer;
+    use UploadsToS3;
     /**
      * Display a listing of the resource.
      */
@@ -153,11 +155,7 @@ class CustomerController extends Controller
   if ($request->hasFile('photo')) {
         $file = $request->file('photo');
         $filename = 'customer_' . uniqid() . '.' . $file->getClientOriginalExtension();
-        $destinationPath = public_path('uploads/customers');
-        $file->move($destinationPath, $filename);
-
-        // Save path in DB (optional: prepend 'uploads/customers/' to make it accessible via URL)
-        $customer->photo = 'uploads/customers/' . $filename;
+        $customer->photo = $this->uploadToS3($file, 'uploads/customers', $filename);
     }
     $customer->save();
       
@@ -199,22 +197,12 @@ class CustomerController extends Controller
 
     if ($request->hasFile('photo')) {
 
-        // ensure directory exists
-        $destinationPath = public_path('uploads/customers');
-        if (!file_exists($destinationPath)) {
-            mkdir($destinationPath, 0755, true);
-        }
-
         // delete old photo (if exists)
-        if ($customer->photo && file_exists(public_path($customer->photo))) {
-            unlink(public_path($customer->photo));
-        }
+        $this->deleteFromS3($customer->photo);
 
         $file = $request->file('photo');
         $filename = 'customer_' . uniqid() . '.' . $file->getClientOriginalExtension();
-        $file->move($destinationPath, $filename);
-
-        $customer->photo = 'uploads/customers/' . $filename;
+        $customer->photo = $this->uploadToS3($file, 'uploads/customers', $filename);
     }
 
     $customer->save();
@@ -670,17 +658,10 @@ class CustomerController extends Controller
         $file = $request->file('photo');
         $filename = 'customer_' . uniqid() . '.' . $file->getClientOriginalExtension();
 
-        $destinationPath = public_path('uploads/customers');
+        // delete old photo (if exists)
+        $this->deleteFromS3($customer->photo);
 
-        // Create folder if it doesn't exist
-        if (!file_exists($destinationPath)) {
-            mkdir($destinationPath, 0775, true);
-        }
-
-        $file->move($destinationPath, $filename);
-
-        // Save relative path
-        $customer->photo = 'uploads/customers/' . $filename;
+        $customer->photo = $this->uploadToS3($file, 'uploads/customers', $filename);
     }
 
     $customer->save();

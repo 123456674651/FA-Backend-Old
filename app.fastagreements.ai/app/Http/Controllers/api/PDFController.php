@@ -11,6 +11,7 @@ use App\Models\CategoryAttribute;
 use App\Models\Installment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Mpdf\Mpdf;
 use Illuminate\Support\Carbon;
 use Dompdf\Options;
@@ -69,9 +70,9 @@ class PDFController extends Controller
 
         $filePath = 'assets/pdfs/money_agreement_' . time() . '.pdf';
 
-        File::put(public_path($filePath), $pdf->output());
+        Storage::disk('s3')->put($filePath, $pdf->output(), 'public');
 
-        $fileUrl = asset($filePath);
+        $fileUrl = Storage::disk('s3')->url($filePath);
 
         return $pdf->download('document.pdf');
 
@@ -107,9 +108,9 @@ class PDFController extends Controller
 
         $filePath = 'assets/pdfs/money_agreement_' . time() . '.pdf';
 
-        File::put(public_path($filePath), $pdf->output());
+        Storage::disk('s3')->put($filePath, $pdf->output(), 'public');
 
-        $fileUrl = asset($filePath);
+        $fileUrl = Storage::disk('s3')->url($filePath);
 
 
         return response()->json([
@@ -154,18 +155,18 @@ $amount_in_word = ucfirst($fmt->format(1000));
         // / Check if person 1 image exists and is valid
         $person_1_image_base64 = null;
         if (!empty($persone_1_details->person_image)) {
-            $person_1_image_path = public_path(parse_url($persone_1_details->person_image_url, PHP_URL_PATH));
-            if (file_exists($person_1_image_path)) {
-                $person_1_image_base64 = base64_encode(file_get_contents($person_1_image_path));
+            $person_1_image_key = 'admin/images/person_images_thumb/' . $persone_1_details->person_image;
+            if (Storage::disk('s3')->exists($person_1_image_key)) {
+                $person_1_image_base64 = base64_encode(Storage::disk('s3')->get($person_1_image_key));
             }
         }
 
         // Check if person 2 image exists and is valid
         $person_2_image_base64 = null;
         if (!empty($persone_2_details->person_image)) {
-            $person_2_image_path = public_path(parse_url($persone_2_details->person_image_url, PHP_URL_PATH));
-            if (file_exists($person_2_image_path)) {
-                $person_2_image_base64 = base64_encode(file_get_contents($person_2_image_path));
+            $person_2_image_key = 'admin/images/person_images_thumb/' . $persone_2_details->person_image;
+            if (Storage::disk('s3')->exists($person_2_image_key)) {
+                $person_2_image_base64 = base64_encode(Storage::disk('s3')->get($person_2_image_key));
             }
         }
 
@@ -249,9 +250,9 @@ $amount_in_word = ucfirst($fmt->format(1000));
 
         $filePath = 'assets/pdfs/rent_agreement_' . time() . '.pdf';
 
-        File::put(public_path($filePath), $pdf->output());
+        Storage::disk('s3')->put($filePath, $pdf->output(), 'public');
 
-        $fileUrl = asset($filePath);
+        $fileUrl = Storage::disk('s3')->url($filePath);
 
 
         return response()->json([
@@ -293,18 +294,18 @@ $amount_in_word = ucfirst($fmt->format(1000));
         // / Check if person 1 image exists and is valid
         $person_1_image_base64 = null;
         if (!empty($persone_1_details->person_image)) {
-            $person_1_image_path = public_path(parse_url($persone_1_details->person_image_url, PHP_URL_PATH));
-            if (file_exists($person_1_image_path)) {
-                $person_1_image_base64 = base64_encode(file_get_contents($person_1_image_path));
+            $person_1_image_key = 'admin/images/person_images_thumb/' . $persone_1_details->person_image;
+            if (Storage::disk('s3')->exists($person_1_image_key)) {
+                $person_1_image_base64 = base64_encode(Storage::disk('s3')->get($person_1_image_key));
             }
         }
 
         // Check if person 2 image exists and is valid
         $person_2_image_base64 = null;
         if (!empty($persone_2_details->person_image)) {
-            $person_2_image_path = public_path(parse_url($persone_2_details->person_image_url, PHP_URL_PATH));
-            if (file_exists($person_2_image_path)) {
-                $person_2_image_base64 = base64_encode(file_get_contents($person_2_image_path));
+            $person_2_image_key = 'admin/images/person_images_thumb/' . $persone_2_details->person_image;
+            if (Storage::disk('s3')->exists($person_2_image_key)) {
+                $person_2_image_base64 = base64_encode(Storage::disk('s3')->get($person_2_image_key));
             }
         }
 
@@ -369,9 +370,9 @@ $amount_in_word = ucfirst($fmt->format(1000));
 
         $filePath = 'assets/pdfs/rent_agreement_' . time() . '.pdf';
 
-        File::put(public_path($filePath), $pdf->output());
+        Storage::disk('s3')->put($filePath, $pdf->output(), 'public');
 
-        $fileUrl = asset($filePath);
+        $fileUrl = Storage::disk('s3')->url($filePath);
 
         $deal = new Deal;
         $deal->person_1 = $persone_1;
@@ -613,17 +614,17 @@ $amount_in_word = ucfirst($fmt->format(1000));
 
          $person_1_image_base64 = null;
         if (!empty($aggriment->party_1_image)) {
-            $person_1_image_path = base_path('public/admin/images/person_images_thumb/' . basename($aggriment->party_one_image_url));
-            if (file_exists($person_1_image_path)) {
-                $person_1_image_base64 = base64_encode(file_get_contents($person_1_image_path));
+            $person_1_image_key = 'admin/images/person_images_thumb/' . $aggriment->party_1_image;
+            if (Storage::disk('s3')->exists($person_1_image_key)) {
+                $person_1_image_base64 = base64_encode(Storage::disk('s3')->get($person_1_image_key));
             }
         }
 
         $person_2_image_base64 = null;
         if (!empty($aggriment->party_2_image)) {
-            $person_2_image_path = base_path('public/admin/images/person_images_thumb/' . basename($aggriment->party_two_image_url));
-            if (file_exists($person_2_image_path)) {
-                $person_2_image_base64 = base64_encode(file_get_contents($person_2_image_path));
+            $person_2_image_key = 'admin/images/person_images_thumb/' . $aggriment->party_2_image;
+            if (Storage::disk('s3')->exists($person_2_image_key)) {
+                $person_2_image_base64 = base64_encode(Storage::disk('s3')->get($person_2_image_key));
             }
         }
 
@@ -758,9 +759,9 @@ $guarantor_number_array = explode(',',$guarantor_number);
 
         $filePath = 'assets/pdfs/rent_agreement_' . time() . '.pdf';
 
-        File::put(public_path($filePath), $pdf->output());
+        Storage::disk('s3')->put($filePath, $pdf->output(), 'public');
 
-        $fileUrl = asset($filePath);
+        $fileUrl = Storage::disk('s3')->url($filePath);
 
         $aggriment->documents = $fileUrl;
         $aggriment->save();

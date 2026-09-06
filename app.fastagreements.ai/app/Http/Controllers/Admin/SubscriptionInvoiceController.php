@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Carbon;
 
 class SubscriptionInvoiceController extends Controller
@@ -115,9 +116,11 @@ class SubscriptionInvoiceController extends Controller
         $filename = 'invoice-' . $invoice->invoice_number . '.pdf';
 
         if (Schema::hasColumn('subscription_invoices', 'invoice_pdf') && !empty($invoice->invoice_pdf)) {
-            $path = public_path($invoice->invoice_pdf);
-            if (file_exists($path)) {
-                return response()->file($path, ['Content-Disposition' => 'inline; filename="' . $filename . '"']);
+            if (Storage::disk('s3')->exists($invoice->invoice_pdf)) {
+                return response(Storage::disk('s3')->get($invoice->invoice_pdf), 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $filename . '"',
+                ]);
             }
         }
 
@@ -133,9 +136,11 @@ class SubscriptionInvoiceController extends Controller
         $filename = 'invoice-' . $invoice->invoice_number . '.pdf';
 
         if (Schema::hasColumn('subscription_invoices', 'invoice_pdf') && !empty($invoice->invoice_pdf)) {
-            $path = public_path($invoice->invoice_pdf);
-            if (file_exists($path)) {
-                return response()->download($path, $filename);
+            if (Storage::disk('s3')->exists($invoice->invoice_pdf)) {
+                return response(Storage::disk('s3')->get($invoice->invoice_pdf), 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                ]);
             }
         }
 

@@ -42,7 +42,7 @@
                                 <label for="customFile1" class="col-sm-2 col-form-label">Purpose Image</label>
                                 <div class="col-sm-10">
                                     <div class="mb-4 d-flex ">
-                                        <img id="selectedImage" src="{{ asset('admin/images/purpose_image_thumb/' . $purpose->purpose_image) }}" alt="purpose image" style="width: 100px;" />
+                                        <img id="selectedImage" src="{{ s3_asset('admin/images/purpose_image_thumb/' . $purpose->purpose_image) }}" alt="purpose image" style="width: 100px;" />
                                     </div>
                                     <div class="d-flex ">
                                         <div class="btn button-color btn-rounded" >

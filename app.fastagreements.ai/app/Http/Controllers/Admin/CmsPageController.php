@@ -11,10 +11,16 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
+use App\Traits\UploadsToS3;
 use Exception;
 
 class CmsPageController extends Controller
 {
+    use UploadsToS3;
+
+    private const CMS_FOLDER = 'cms';
+    private const CMS_EDITOR_FOLDER = 'cms/editor';
+
     /**
      * Display a listing of the resource.
      */
@@ -97,14 +103,9 @@ class CmsPageController extends Controller
             
             // Handle Featured Image Upload
             if ($request->hasFile('featured_image')) {
-                // Ensure directory exists
-                if (!Storage::disk('public')->exists('cms')) {
-                    Storage::disk('public')->makeDirectory('cms');
-                }
-                
                 $file = $request->file('featured_image');
                 $filename = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-                $file->storeAs('cms', $filename, 'public');
+                $this->uploadToS3($file, self::CMS_FOLDER, $filename);
                 $data['featured_image'] = $filename;
             }
 
@@ -154,19 +155,14 @@ class CmsPageController extends Controller
 
             // Handle Featured Image Upload and deletion of old one
             if ($request->hasFile('featured_image')) {
-                // Ensure directory exists
-                if (!Storage::disk('public')->exists('cms')) {
-                    Storage::disk('public')->makeDirectory('cms');
-                }
-
                 // Delete old image
                 if ($cmsPage->featured_image) {
-                    Storage::disk('public')->delete('cms/' . $cmsPage->featured_image);
+                    $this->deleteFromS3(self::CMS_FOLDER . '/' . $cmsPage->featured_image);
                 }
 
                 $file = $request->file('featured_image');
                 $filename = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-                $file->storeAs('cms', $filename, 'public');
+                $this->uploadToS3($file, self::CMS_FOLDER, $filename);
                 $data['featured_image'] = $filename;
             }
 
@@ -196,7 +192,7 @@ class CmsPageController extends Controller
         try {
             // Delete associated image file
             if ($cmsPage->featured_image) {
-                Storage::disk('public')->delete('cms/' . $cmsPage->featured_image);
+                $this->deleteFromS3(self::CMS_FOLDER . '/' . $cmsPage->featured_image);
                 $cmsPage->featured_image = null;
                 $cmsPage->save();
             }
@@ -224,15 +220,10 @@ class CmsPageController extends Controller
 
         try {
             if ($request->hasFile('file')) {
-                if (!Storage::disk('public')->exists('cms/editor')) {
-                    Storage::disk('public')->makeDirectory('cms/editor');
-                }
-
                 $file = $request->file('file');
                 $filename = time() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
-                $file->storeAs('cms/editor', $filename, 'public');
-
-                $url = asset('storage/cms/editor/' . $filename);
+                $path = $this->uploadToS3($file, self::CMS_EDITOR_FOLDER, $filename);
+                $url = $this->s3Url($path);
 
                 return response()->json([
                     'location' => $url,

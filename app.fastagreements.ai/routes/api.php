@@ -160,6 +160,7 @@ Route::middleware('auth.jwt')->group(function () {
     // may re-upload party, Aadhaar or vehicle images. Parties, category and
     // language are fixed at creation — the handler refuses to change them.
     Route::post('/update_aggriment/v1', [PhpWordController::class, 'update_aggriment']);
+    Route::get('agreements/drafts', [PhpWordController::class, 'drafts']);
     Route::post('/convert_Word_to_pdf/v1', [PhpWordController::class, 'convertWordToPdf']);
     Route::post('create_aggriment', [PDFController::class, 'create_aggriment']);
     Route::post('list_aggriment', [PDFController::class, 'list_aggriment']);

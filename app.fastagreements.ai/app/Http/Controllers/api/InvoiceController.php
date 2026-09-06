@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 
 class InvoiceController extends Controller
 {
@@ -29,35 +30,26 @@ class InvoiceController extends Controller
 
             $filename = 'invoice-' . $invoice->invoice_number . '.pdf';
             $relativeFolder = 'assets/pdfs/invoices';
-            $publicFolder = public_path($relativeFolder);
-
-            // Ensure the directory exists
-            if (!File::exists($publicFolder)) {
-                File::makeDirectory($publicFolder, 0755, true, true);
-            }
-
             $filePath = $relativeFolder . '/' . $filename;
-            $fullPath = public_path($filePath);
 
-            // Check if file already exists in database column and disk
+            // Check if the PDF already exists on S3
             if (Schema::hasColumn('subscription_invoices', 'invoice_pdf') && !empty($invoice->invoice_pdf)) {
-                $existingPath = public_path($invoice->invoice_pdf);
-                if (file_exists($existingPath)) {
+                if (Storage::disk('s3')->exists($invoice->invoice_pdf)) {
                     return response()->json([
                         'status' => 'success',
-                        'url' => asset($invoice->invoice_pdf),
+                        'url' => Storage::disk('s3')->url($invoice->invoice_pdf),
                         'filename' => basename($invoice->invoice_pdf),
                     ]);
                 }
             }
 
-            // Generate and save the PDF
+            // Generate and save the PDF to S3
             $pdf = PDF::loadView('admin.subscription_invoices.pdf', compact('invoice'))
                 ->setPaper('A4', 'portrait');
 
             $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
 
-            File::put($fullPath, $pdf->output());
+            Storage::disk('s3')->put($filePath, $pdf->output(), 'public');
 
             // Save the path if column exists
             if (Schema::hasColumn('subscription_invoices', 'invoice_pdf')) {
@@ -65,11 +57,9 @@ class InvoiceController extends Controller
                 $invoice->save();
             }
 
-            $fileUrl = asset($filePath);
-
             return response()->json([
                 'status' => 'success',
-                'url' => $fileUrl,
+                'url' => Storage::disk('s3')->url($filePath),
                 'filename' => $filename,
             ]);
 
@@ -100,9 +90,11 @@ class InvoiceController extends Controller
             $filename = 'invoice-' . $invoice->invoice_number . '.pdf';
 
             if (Schema::hasColumn('subscription_invoices', 'invoice_pdf') && !empty($invoice->invoice_pdf)) {
-                $path = public_path($invoice->invoice_pdf);
-                if (file_exists($path)) {
-                    return response()->file($path, ['Content-Disposition' => 'inline; filename="' . $filename . '"']);
+                if (Storage::disk('s3')->exists($invoice->invoice_pdf)) {
+                    return response(Storage::disk('s3')->get($invoice->invoice_pdf), 200, [
+                        'Content-Type' => 'application/pdf',
+                        'Content-Disposition' => 'inline; filename="' . $filename . '"',
+                    ]);
                 }
             }
 
@@ -138,9 +130,11 @@ class InvoiceController extends Controller
             $filename = 'invoice-' . $invoice->invoice_number . '.pdf';
 
             if (Schema::hasColumn('subscription_invoices', 'invoice_pdf') && !empty($invoice->invoice_pdf)) {
-                $path = public_path($invoice->invoice_pdf);
-                if (file_exists($path)) {
-                    return response()->download($path, $filename);
+                if (Storage::disk('s3')->exists($invoice->invoice_pdf)) {
+                    return response(Storage::disk('s3')->get($invoice->invoice_pdf), 200, [
+                        'Content-Type' => 'application/pdf',
+                        'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                    ]);
                 }
             }
 

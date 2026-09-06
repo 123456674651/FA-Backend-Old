@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Traits\UploadsToS3;
 use App\Models\CategoryWarning;
 use App\Models\DealCategory;
 use App\Models\Language;
@@ -15,6 +16,8 @@ use Exception;
 
 class CategoryWarningController extends Controller
 {
+    use UploadsToS3;
+
     /**
      * Display a listing of the resource.
      */
@@ -152,8 +155,7 @@ class CategoryWarningController extends Controller
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
                 $filename = 'warning_' . time() . '_' . rand(100, 999) . '.' . $file->getClientOriginalExtension();
-                $file->move(public_path('category_warnings'), $filename);
-                $data['image'] = 'category_warnings/' . $filename;
+                $data['image'] = $this->uploadToS3($file, 'category_warnings', $filename);
             }
 
             $existingWarning = CategoryWarning::where('deal_category_id', $data['deal_category_id'])
@@ -206,14 +208,11 @@ class CategoryWarningController extends Controller
 
             if ($request->hasFile('image')) {
                 // Delete old image
-                if ($warning->image && file_exists(public_path($warning->image))) {
-                    @unlink(public_path($warning->image));
-                }
+                $this->deleteFromS3($warning->image);
 
                 $file = $request->file('image');
                 $filename = 'warning_' . time() . '_' . rand(100, 999) . '.' . $file->getClientOriginalExtension();
-                $file->move(public_path('category_warnings'), $filename);
-                $data['image'] = 'category_warnings/' . $filename;
+                $data['image'] = $this->uploadToS3($file, 'category_warnings', $filename);
             }
 
             $warning->update($data);
@@ -234,10 +233,8 @@ class CategoryWarningController extends Controller
             $warning = CategoryWarning::findOrFail($id);
             $categoryId = $warning->deal_category_id;
 
-            // Delete image file from disk
-            if ($warning->image && file_exists(public_path($warning->image))) {
-                @unlink(public_path($warning->image));
-            }
+            // Delete image file from S3
+            $this->deleteFromS3($warning->image);
 
             $warning->delete();
 

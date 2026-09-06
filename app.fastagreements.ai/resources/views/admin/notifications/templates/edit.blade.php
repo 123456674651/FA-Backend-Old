@@ -82,7 +82,7 @@
                             
                             @if($template->image)
                                 <div class="mt-2 text-muted small">Current image:</div>
-                                <img id="img_preview" src="{{ asset($template->image) }}" alt="Template Image" style="max-height: 150px;" class="img-thumbnail mt-1">
+                                <img id="img_preview" src="{{ s3_asset($template->image) }}" alt="Template Image" style="max-height: 150px;" class="img-thumbnail mt-1">
                             @else
                                 <img id="img_preview" src="" alt="Selected Image Preview" style="max-height: 150px; display: none;" class="img-thumbnail mt-2">
                             @endif

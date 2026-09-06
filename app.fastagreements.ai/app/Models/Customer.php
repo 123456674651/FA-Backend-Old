@@ -79,11 +79,11 @@ class Customer extends Model implements AuthenticatableContract
    // Accessor for person_image_url
    public function getPersonImageUrlAttribute()
    {
-       return $this->person_image ?  asset('admin/images/person_images_thumb/' . $this->person_image) : null;
+       return $this->person_image ?  s3_asset('admin/images/person_images_thumb/' . $this->person_image) : null;
    }
    public function getUpiImageUrlAttribute()
    {
-       return $this->person_image ? asset('admin/images/upi_images_thumb/' . $this->upi_image) : null;
+       return $this->person_image ? s3_asset('admin/images/upi_images_thumb/' . $this->upi_image) : null;
    }
 
     protected $casts = [

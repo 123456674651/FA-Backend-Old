@@ -39,7 +39,7 @@
 
                         @if($cmsPage->featured_image)
                             <div class="mb-4">
-                                <img src="{{ asset('storage/cms/' . $cmsPage->featured_image) }}" alt="Featured Image" class="img-fluid rounded shadow-sm" style="max-height: 350px; width: auto; object-fit: contain;">
+                                <img src="{{ s3_asset('cms/' . $cmsPage->featured_image) }}" alt="Featured Image" class="img-fluid rounded shadow-sm" style="max-height: 350px; width: auto; object-fit: contain;">
                             </div>
                         @endif
 

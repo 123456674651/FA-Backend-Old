@@ -26,7 +26,7 @@ class DealCategory extends Model
 
     public function getCategoryImageUrlAttribute()
     {
-        return asset('admin/images/category_image_thumb/' . $this->category_image);
+        return s3_asset('admin/images/category_image_thumb/' . $this->category_image);
     }
     
     public function children() 

@@ -105,7 +105,7 @@
                         <div class="mt-4 border rounded p-3 bg-light">
                             <h6 class="fw-bold mb-2 small text-dark text-start">Banner Image</h6>
                             @if($log->image)
-                                <img src="{{ asset($log->image) }}" class="img-fluid rounded shadow-sm" style="max-height: 120px; object-fit: cover;">
+                                <img src="{{ s3_asset($log->image) }}" class="img-fluid rounded shadow-sm" style="max-height: 120px; object-fit: cover;">
                             @else
                                 <span class="text-muted small">No image attached to this campaign.</span>
                             @endif

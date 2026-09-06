@@ -11,6 +11,7 @@ use App\Models\NotificationHistory;
 use App\Models\NotificationHistoryUser;
 use App\Services\PushNotificationService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class SendPushNotificationJob implements ShouldQueue
 {
@@ -73,13 +74,19 @@ class SendPushNotificationJob implements ShouldQueue
                     }
 
                     try {
+                        // FCM needs a full, publicly reachable URL here —
+                        // $history->image is just the stored relative path
+                        // (e.g. "uploads/notifications/xyz.jpg"), so resolve
+                        // it against the S3 disk before sending.
+                        $imageUrl = $history->image ? Storage::disk('s3')->url($history->image) : null;
+
                         // Deliver via Firebase V1 HTTP API
                         $response = $service->sendFcmNotification(
                             $accessToken,
                             $token,
                             $history->title,
                             $history->message,
-                            $history->image
+                            $imageUrl
                         );
 
                         $recipient->update([

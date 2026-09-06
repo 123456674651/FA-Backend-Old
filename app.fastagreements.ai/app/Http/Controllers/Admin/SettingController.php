@@ -14,9 +14,12 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
+use App\Traits\UploadsToS3;
 
 class SettingController extends Controller
 {
+    use UploadsToS3;
+
     /**
      * Display a listing of the resource.
      */
@@ -64,6 +67,12 @@ class SettingController extends Controller
                     $file = $request->file($key);
                     
                     if ($key === 'firebase_service_account') {
+                        // SECURITY: this is a live Firebase admin credential
+                        // (private_key + client_email) — it intentionally
+                        // stays on local private disk (storage/app/firebase,
+                        // never web-accessible) instead of S3. Uploading it
+                        // to the S3 bucket used for public assets would risk
+                        // exposing admin credentials to the internet.
                         $jsonContent = json_decode(file_get_contents($file->getRealPath()), true);
                         if (!$jsonContent || !isset($jsonContent['private_key']) || !isset($jsonContent['client_email'])) {
                             if ($request->expectsJson()) {
@@ -94,13 +103,13 @@ class SettingController extends Controller
                         $file->move($destinationPath, $fileName);
                         $path = $fileName;
                     } else {
-                        $path = $file->store('settings', 'public');
-                        
+                        // Generic setting files (logo, favicon, etc.) go to S3.
+                        $filename = time() . '_' . $file->getClientOriginalName();
+                        $path = $this->uploadToS3($file, 'settings', $filename);
+
                         // Delete old file if exists
                         $oldPath = Setting::get($key);
-                        if ($oldPath && Storage::disk('public')->exists($oldPath)) {
-                            Storage::disk('public')->delete($oldPath);
-                        }
+                        $this->deleteFromS3($oldPath);
                     }
 
                     Setting::set($key, $path, $group, 'file');

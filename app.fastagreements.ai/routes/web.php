@@ -28,9 +28,11 @@ use App\Http\Controllers\Admin\GstReportController;
 
 
 // Public/Guest Routes
-Route::get('/', function () {
+// Health check — no longer claims the `dashboard.index` name (that belongs to
+// the real authenticated dashboard registered inside the auth group below).
+Route::get('/up', function () {
     return response()->json(['status' => true, 'message' => 'Application is running.']);
-})->name('dashboard.index');
+})->name('health.check');
 
 Route::middleware('guest')->group(function () {
     Route::get('admin/login', [AuthController::class, 'showLogin'])->name('login');
@@ -61,6 +63,10 @@ Route::middleware('guest')->group(function () {
 //})->name('profile.index');
 
 Route::middleware('auth')->group(function () {
+    // Real admin dashboard. `dashboard.index` is the post-login redirect target
+    // and the sidebar's Dashboard link.
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard.index');
+
     Route::post('admin/logout', [AuthController::class, 'logout'])->name('logout');
 
     // Admin Profile Routes

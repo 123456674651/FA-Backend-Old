@@ -145,7 +145,7 @@
                                             <label class="form-label fw-bold d-block mb-3">Dashboard Logo</label>
                                             <div class="bg-dark p-3 rounded d-inline-block border mb-3">
                                                 <img id="logo-preview-settings" 
-                                                     src="{{ asset('assets/img/logo/dashboard_logo.png') }}?v={{ file_exists(public_path('assets/img/logo/dashboard_logo.png')) ? filemtime(public_path('assets/img/logo/dashboard_logo.png')) : time() }}" 
+                                                     src="{{ s3_asset_or('assets/img/logo/dashboard_logo.png', asset('assets/img/logo/dashboard_logo.png')) }}?v={{ time() }}" 
                                                      alt="Dashboard Logo" 
                                                      style="max-height: 80px; width: auto; object-fit: contain;">
                                             </div>
@@ -338,7 +338,7 @@
                                                     <label class="form-label fw-bold d-block">{{ $label }}</label>
                                                     <div class="mb-3 border p-2 rounded bg-light d-inline-block">
                                                         <img id="preview-{{ $key }}" 
-                                                             src="{{ setting($key) ? asset('storage/' . setting($key)) : asset('assets/img/profile-img.jpg') }}" 
+                                                             src="{{ s3_asset_or(setting($key), asset('assets/img/profile-img.jpg')) }}" 
                                                              alt="{{ $label }}" 
                                                              class="img-thumbnail" 
                                                              style="height: 100px; max-width: 150px; object-fit: contain;">

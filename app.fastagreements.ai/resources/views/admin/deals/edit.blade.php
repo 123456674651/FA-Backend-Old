@@ -368,7 +368,7 @@
                                 <input type="file" name="video_recording" id="video_recording" class="form-control" />
                             
                                 @if(isset($existingFileVideo) && !empty($existingFileVideo))
-                                    <p>Current file: <a href="{{ asset($existingFileVideo) }}" target="_blank">{{ basename($existingFileVideo) }}</a></p>
+                                    <p>Current file: <a href="{{ s3_asset($existingFileVideo) }}" target="_blank">{{ basename($existingFileVideo) }}</a></p>
                                 @endif
                             
                                 @error('video_recording')
@@ -380,7 +380,7 @@
                                 <input type="file" name="audio_recording" id="audio_recording" class="form-control" />
                             
                                 @if(isset($existingFileAudio) && !empty($existingFileAudio))
-                                    <p>Current file: <a href="{{ asset($existingFileAudio) }}" target="_blank">{{ basename($existingFileAudio) }}</a></p>
+                                    <p>Current file: <a href="{{ s3_asset($existingFileAudio) }}" target="_blank">{{ basename($existingFileAudio) }}</a></p>
                                 @endif
                             
                                 @error('audio_recording')
@@ -392,7 +392,7 @@
                                 <input type="file" name="image" id="image" class="form-control" />
                             
                                 @if(isset($existingFileImage) && !empty($existingFileImage))
-                                    <p>Current file: <a href="{{ asset($existingFileImage) }}" target="_blank">{{ basename($existingFileImage) }}</a></p>
+                                    <p>Current file: <a href="{{ s3_asset($existingFileImage) }}" target="_blank">{{ basename($existingFileImage) }}</a></p>
                                 @endif
                             
                                 @error('image')

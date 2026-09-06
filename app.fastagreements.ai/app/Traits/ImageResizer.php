@@ -4,7 +4,7 @@ namespace App\Traits;
 
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver as DriverGd;
-
+use Illuminate\Support\Facades\Storage;
 
 trait ImageResizer
 {
@@ -14,17 +14,18 @@ trait ImageResizer
 
         if ($image) {
             $imageName = time() . '_' . $image->getClientOriginalName();
-            $destinationPath = public_path('admin/images/' . $thumb . "/" . $imageName);
-            $originalPath = public_path('admin/images/' . $folder . "/" . $imageName);
+            $thumbKey = 'admin/images/' . $thumb . '/' . $imageName;
+            $originalKey = 'admin/images/' . $folder . '/' . $imageName;
 
             $manager = new ImageManager(new DriverGd());
             $image = $manager->read($image);
-            $image->save($originalPath);
+
+            // Save the full-size (unresized) version to S3.
+            Storage::disk('s3')->put($originalKey, (string) $image->encode(), 'public');
 
             $requiredSize = 1500;
-          //$vehicle = array("vehicle_front_side", "vehicle_back_side", "vehicle_left_side", "vehicle_right_side");
-          	if ($folder === 'vehicle_images') {
-            	$requiredSize = 900;
+            if ($folder === 'vehicle_images') {
+                $requiredSize = 900;
             }
             $width = $image->width();
             $height = $image->height();
@@ -39,10 +40,11 @@ trait ImageResizer
             }
 
             $image = $image->resize($newWidth, $newHeight);
-            $image->save($destinationPath, 80);
 
+            // Save the resized thumb version to S3 (quality 80, matches old behaviour).
+            Storage::disk('s3')->put($thumbKey, (string) $image->encode(quality: 80), 'public');
 
-            return $imageName; // Return the image name
+            return $imageName; // Return the image name (unchanged — DB still stores just the filename)
         }
 
         return null; // Return null if no image

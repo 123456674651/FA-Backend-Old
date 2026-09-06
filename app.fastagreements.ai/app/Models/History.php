@@ -15,7 +15,7 @@ class History extends Model
 
     public function getImageUrlAttribute()
     {
-        return $this->images ? asset('admin/images/remark_images_thumb/' . $this->images) : null;
+        return $this->images ? s3_asset('admin/images/remark_images_thumb/' . $this->images) : null;
     }
 
     

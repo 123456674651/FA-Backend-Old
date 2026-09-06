@@ -219,7 +219,7 @@
                             <div class="col-lg-4 col-md-4 label text-muted">Documents</div>
                             <div class="col-lg-8 col-md-8 text-dark fw-semibold">
                                 @if($agreement->documents)
-                                    <a href="{{ asset('agreement_pdfs/' . $agreement->documents) }}" target="_blank"
+                                    <a href="{{ s3_asset('agreement_pdfs/' . $agreement->documents) }}" target="_blank"
                                         class="btn btn-sm btn-outline-dark">
                                         <i class="bi bi-file-earmark-arrow-down"></i> View Documents
                                     </a>
@@ -270,9 +270,9 @@
                                 <div class="p-2 border rounded bg-light">
                                     <span class="d-block small text-muted fw-bold mb-2">Photo</span>
                                     @if($agreement->party_1_image)
-                                        <img src="{{ asset('admin/images/person_images/' . $agreement->party_1_image) }}"
+                                        <img src="{{ s3_asset('admin/images/person_images/' . $agreement->party_1_image) }}"
                                             class="img-fluid rounded mb-2" style="max-height: 80px; object-fit: cover;">
-                                        <a href="{{ asset('admin/images/person_images/' . $agreement->party_1_image) }}"
+                                        <a href="{{ s3_asset('admin/images/person_images/' . $agreement->party_1_image) }}"
                                             target="_blank" class="btn btn-xs btn-dark d-block">View Full</a>
                                     @else
                                         <span class="text-muted small d-block py-3">No Image</span>
@@ -299,9 +299,9 @@
                                 <div class="p-2 border rounded bg-light">
                                     <span class="d-block small text-muted fw-bold mb-2">Aadhaar Front</span>
                                     @if($agreement->party_1_adhar_front)
-                                        <img src="{{ asset('admin/images/adhar_images/' . $agreement->party_1_adhar_front) }}"
+                                        <img src="{{ s3_asset('admin/images/adhar_images/' . $agreement->party_1_adhar_front) }}"
                                             class="img-fluid rounded mb-2" style="max-height: 80px; object-fit: contain;">
-                                        <a href="{{ asset('admin/images/adhar_images/' . $agreement->party_1_adhar_front) }}"
+                                        <a href="{{ s3_asset('admin/images/adhar_images/' . $agreement->party_1_adhar_front) }}"
                                             target="_blank" class="btn btn-xs btn-dark d-block">View Full</a>
                                     @else
                                         <span class="text-muted small d-block py-3">No Aadhaar Front</span>
@@ -313,9 +313,9 @@
                                 <div class="p-2 border rounded bg-light">
                                     <span class="d-block small text-muted fw-bold mb-2">Aadhaar Back</span>
                                     @if($agreement->party_1_adhar_back)
-                                        <img src="{{ asset('admin/images/adhar_images/' . $agreement->party_1_adhar_back) }}"
+                                        <img src="{{ s3_asset('admin/images/adhar_images/' . $agreement->party_1_adhar_back) }}"
                                             class="img-fluid rounded mb-2" style="max-height: 80px; object-fit: contain;">
-                                        <a href="{{ asset('admin/images/adhar_images/' . $agreement->party_1_adhar_back) }}"
+                                        <a href="{{ s3_asset('admin/images/adhar_images/' . $agreement->party_1_adhar_back) }}"
                                             target="_blank" class="btn btn-xs btn-dark d-block">View Full</a>
                                     @else
                                         <span class="text-muted small d-block py-3">No Aadhaar Back</span>
@@ -362,9 +362,9 @@
                                 <div class="p-2 border rounded bg-light">
                                     <span class="d-block small text-muted fw-bold mb-2">Photo</span>
                                     @if($agreement->party_2_image)
-                                        <img src="{{ asset('admin/images/person_images/' . $agreement->party_2_image) }}"
+                                        <img src="{{ s3_asset('admin/images/person_images/' . $agreement->party_2_image) }}"
                                             class="img-fluid rounded mb-2" style="max-height: 80px; object-fit: cover;">
-                                        <a href="{{ asset('admin/images/person_images/' . $agreement->party_2_image) }}"
+                                        <a href="{{ s3_asset('admin/images/person_images/' . $agreement->party_2_image) }}"
                                             target="_blank" class="btn btn-xs btn-dark d-block">View Full</a>
                                     @else
                                         <span class="text-muted small d-block py-3">No Image</span>
@@ -391,9 +391,9 @@
                                 <div class="p-2 border rounded bg-light">
                                     <span class="d-block small text-muted fw-bold mb-2">Aadhaar Front</span>
                                     @if($agreement->party_2_adhar_front)
-                                        <img src="{{ asset('admin/images/adhar_images/' . $agreement->party_2_adhar_front) }}"
+                                        <img src="{{ s3_asset('admin/images/adhar_images/' . $agreement->party_2_adhar_front) }}"
                                             class="img-fluid rounded mb-2" style="max-height: 80px; object-fit: contain;">
-                                        <a href="{{ asset('admin/images/adhar_images/' . $agreement->party_2_adhar_front) }}"
+                                        <a href="{{ s3_asset('admin/images/adhar_images/' . $agreement->party_2_adhar_front) }}"
                                             target="_blank" class="btn btn-xs btn-dark d-block">View Full</a>
                                     @else
                                         <span class="text-muted small d-block py-3">No Aadhaar Front</span>
@@ -405,9 +405,9 @@
                                 <div class="p-2 border rounded bg-light">
                                     <span class="d-block small text-muted fw-bold mb-2">Aadhaar Back</span>
                                     @if($agreement->party_2_adhar_back)
-                                        <img src="{{ asset('admin/images/adhar_images/' . $agreement->party_2_adhar_back) }}"
+                                        <img src="{{ s3_asset('admin/images/adhar_images/' . $agreement->party_2_adhar_back) }}"
                                             class="img-fluid rounded mb-2" style="max-height: 80px; object-fit: contain;">
-                                        <a href="{{ asset('admin/images/adhar_images/' . $agreement->party_2_adhar_back) }}"
+                                        <a href="{{ s3_asset('admin/images/adhar_images/' . $agreement->party_2_adhar_back) }}"
                                             target="_blank" class="btn btn-xs btn-dark d-block">View Full</a>
                                     @else
                                         <span class="text-muted small d-block py-3">No Aadhaar Back</span>
@@ -430,9 +430,9 @@
                                     <div class="p-2 border rounded bg-light">
                                         <span class="d-block small text-muted fw-bold mb-2">Front Side</span>
                                         @if($agreement->vehicle_front_side)
-                                            <img src="{{ asset('admin/images/vehicle_images/' . $agreement->vehicle_front_side) }}"
+                                            <img src="{{ s3_asset('admin/images/vehicle_images/' . $agreement->vehicle_front_side) }}"
                                                 class="img-fluid rounded mb-2" style="max-height: 80px; object-fit: cover;">
-                                            <a href="{{ asset('admin/images/vehicle_images/' . $agreement->vehicle_front_side) }}"
+                                            <a href="{{ s3_asset('admin/images/vehicle_images/' . $agreement->vehicle_front_side) }}"
                                                 target="_blank" class="btn btn-xs btn-dark d-block">View Full</a>
                                         @else
                                             <span class="text-muted small d-block py-3">No Photo</span>
@@ -444,9 +444,9 @@
                                     <div class="p-2 border rounded bg-light">
                                         <span class="d-block small text-muted fw-bold mb-2">Back Side</span>
                                         @if($agreement->vehicle_back_side)
-                                            <img src="{{ asset('admin/images/vehicle_images/' . $agreement->vehicle_back_side) }}"
+                                            <img src="{{ s3_asset('admin/images/vehicle_images/' . $agreement->vehicle_back_side) }}"
                                                 class="img-fluid rounded mb-2" style="max-height: 80px; object-fit: cover;">
-                                            <a href="{{ asset('admin/images/vehicle_images/' . $agreement->vehicle_back_side) }}"
+                                            <a href="{{ s3_asset('admin/images/vehicle_images/' . $agreement->vehicle_back_side) }}"
                                                 target="_blank" class="btn btn-xs btn-dark d-block">View Full</a>
                                         @else
                                             <span class="text-muted small d-block py-3">No Photo</span>
@@ -458,9 +458,9 @@
                                     <div class="p-2 border rounded bg-light">
                                         <span class="d-block small text-muted fw-bold mb-2">Left Side</span>
                                         @if($agreement->vehicle_left_side)
-                                            <img src="{{ asset('admin/images/vehicle_images/' . $agreement->vehicle_left_side) }}"
+                                            <img src="{{ s3_asset('admin/images/vehicle_images/' . $agreement->vehicle_left_side) }}"
                                                 class="img-fluid rounded mb-2" style="max-height: 80px; object-fit: cover;">
-                                            <a href="{{ asset('admin/images/vehicle_images/' . $agreement->vehicle_left_side) }}"
+                                            <a href="{{ s3_asset('admin/images/vehicle_images/' . $agreement->vehicle_left_side) }}"
                                                 target="_blank" class="btn btn-xs btn-dark d-block">View Full</a>
                                         @else
                                             <span class="text-muted small d-block py-3">No Photo</span>
@@ -472,9 +472,9 @@
                                     <div class="p-2 border rounded bg-light">
                                         <span class="d-block small text-muted fw-bold mb-2">Right Side</span>
                                         @if($agreement->vehicle_right_side)
-                                            <img src="{{ asset('admin/images/vehicle_images/' . $agreement->vehicle_right_side) }}"
+                                            <img src="{{ s3_asset('admin/images/vehicle_images/' . $agreement->vehicle_right_side) }}"
                                                 class="img-fluid rounded mb-2" style="max-height: 80px; object-fit: cover;">
-                                            <a href="{{ asset('admin/images/vehicle_images/' . $agreement->vehicle_right_side) }}"
+                                            <a href="{{ s3_asset('admin/images/vehicle_images/' . $agreement->vehicle_right_side) }}"
                                                 target="_blank" class="btn btn-xs btn-dark d-block">View Full</a>
                                         @else
                                             <span class="text-muted small d-block py-3">No Photo</span>

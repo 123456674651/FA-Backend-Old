@@ -199,8 +199,8 @@
                                         <span class="text-muted small d-block">JPG, JPEG, PNG, WEBP (Max 5MB)</span>
                                         <input type="file" id="image" name="image" accept="image/*" class="d-none" onchange="previewImage(event)">
                                         
-                                        <div id="imagePreviewContainer" class="mt-3 {{ ($advocate->image && file_exists(public_path($advocate->image))) ? '' : 'd-none' }}">
-                                            <img id="imagePreview" src="{{ ($advocate->image && file_exists(public_path($advocate->image))) ? asset($advocate->image) : '#' }}" class="img-thumbnail rounded shadow-sm" style="max-height: 150px; object-fit: cover;">
+                                        <div id="imagePreviewContainer" class="mt-3 {{ !empty($advocate->image) ? '' : 'd-none' }}">
+                                            <img id="imagePreview" src="{{ s3_asset_or($advocate->image, '#') }}" class="img-thumbnail rounded shadow-sm" style="max-height: 150px; object-fit: cover;">
                                         </div>
                                     </div>
                                     @error('image')
@@ -217,9 +217,9 @@
                                         <span class="text-muted small d-block">MP4 Only (Max 50MB)</span>
                                         <input type="file" id="video" name="video" accept="video/mp4" class="d-none" onchange="previewVideo(event)">
                                         
-                                        <div id="videoPreviewContainer" class="mt-3 {{ ($advocate->video && file_exists(public_path($advocate->video))) ? '' : 'd-none' }}">
+                                        <div id="videoPreviewContainer" class="mt-3 {{ !empty($advocate->video) ? '' : 'd-none' }}">
                                             <video id="videoPreview" width="100%" controls class="rounded border shadow-sm" style="max-height: 150px;">
-                                                <source src="{{ ($advocate->video && file_exists(public_path($advocate->video))) ? asset($advocate->video) : '' }}" type="video/mp4">
+                                                <source src="{{ s3_asset_or($advocate->video, '') }}" type="video/mp4">
                                             </video>
                                         </div>
                                     </div>
@@ -237,10 +237,10 @@
                                         <span class="text-muted small d-block">PDF, DOC, DOCX (Max 10MB)</span>
                                         <input type="file" id="document" name="document" accept=".pdf,.doc,.docx" class="d-none" onchange="previewDocument(event)">
                                         
-                                        <div id="documentNameContainer" class="mt-3 {{ ($advocate->document && file_exists(public_path($advocate->document))) ? '' : 'd-none' }}">
-                                            @if($advocate->document && file_exists(public_path($advocate->document)))
+                                        <div id="documentNameContainer" class="mt-3 {{ !empty($advocate->document) ? '' : 'd-none' }}">
+                                            @if(!empty($advocate->document))
                                                 <div class="mb-2">
-                                                    <a href="{{ asset($advocate->document) }}" download class="btn btn-outline-dark btn-sm rounded px-3">
+                                                    <a href="{{ s3_asset($advocate->document) }}" download class="btn btn-outline-dark btn-sm rounded px-3">
                                                         <i class="bi bi-cloud-arrow-down-fill me-1"></i>Download Existing
                                                     </a>
                                                 </div>

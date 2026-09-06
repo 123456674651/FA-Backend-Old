@@ -193,7 +193,7 @@
                                             <input type="file" class="form-control" id="person_image"
                                                 name="person_image">
                                             @if ($customer->person_image)
-                                                <img src="{{ asset('admin/images/person_images/' . $customer->person_image) }}"
+                                                <img src="{{ s3_asset('admin/images/person_images/' . $customer->person_image) }}"
                                                     alt="Person Image" class="img-thumbnail mt-2"
                                                     style="max-width: 150px;">
                                             @endif
@@ -339,7 +339,7 @@
                                             <label for="upi_image">UPI Image</label>
                                             <input type="file" class="form-control" id="upi_image" name="upi_image">
                                             @if ($customer->upi_image)
-                                                <img src="{{ asset('admin/images/upi_images/' . $customer->upi_image) }}"
+                                                <img src="{{ s3_asset('admin/images/upi_images/' . $customer->upi_image) }}"
                                                     alt="UPI Image" class="img-thumbnail mt-2" style="max-width: 150px;">
                                             @endif
                                             @error('upi_image')

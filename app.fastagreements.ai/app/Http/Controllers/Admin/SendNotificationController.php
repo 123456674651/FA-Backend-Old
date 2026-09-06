@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Traits\UploadsToS3;
 use App\Models\NotificationTemplate;
 use App\Models\NotificationHistory;
 use App\Models\NotificationHistoryUser;
@@ -18,6 +19,8 @@ use Carbon\Carbon;
 
 class SendNotificationController extends Controller
 {
+    use UploadsToS3;
+
     protected $notificationService;
 
     public function __construct(PushNotificationService $notificationService)
@@ -104,8 +107,7 @@ class SendNotificationController extends Controller
         if ($request->hasFile('image_file')) {
             $file = $request->file('image_file');
             $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/notifications'), $filename);
-            $imagePath = 'uploads/notifications/' . $filename;
+            $imagePath = $this->uploadToS3($file, 'uploads/notifications', $filename);
         } elseif (!empty($request->input('template_image'))) {
             $imagePath = $request->input('template_image'); // Keep template's original image
         }

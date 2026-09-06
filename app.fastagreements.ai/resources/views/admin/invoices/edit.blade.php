@@ -42,7 +42,7 @@
                                 <label for="customFile1" class="col-sm-2 col-form-label">Category Image</label>
                                 <div class="col-sm-10">
                                     <div class="mb-4 d-flex justify-content-centerx">
-                                        <img id="selectedImage" src="{{ asset('admin/images/category_image_thumb/'.$dealCategory->category_image) }}" alt="category image" style="width: 100px;" />
+                                        <img id="selectedImage" src="{{ s3_asset('admin/images/category_image_thumb/' . $dealCategory->category_image) }}" alt="category image" style="width: 100px;" />
                                     </div>
                                     <div class="d-flex justify-content-centerx">
                                         <div class="btn button-color btn-rounded" >

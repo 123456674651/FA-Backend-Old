@@ -45,7 +45,7 @@
                                     <tr>
                                         <td class="text-center align-middle">{{ $loop->iteration }}</td>
                                         <td class="text-center align-middle">
-                                        <img src="{{ asset('admin/images/category_image_thumb/'.$dealCategory->category_image) }}" alt="{{ $dealCategory->category_name }} Logo" style="width: 50px; height: auto;">
+                                        <img src="{{ s3_asset('admin/images/category_image_thumb/' . $dealCategory->category_image) }}" alt="{{ $dealCategory->category_name }} Logo" style="width: 50px; height: auto;">
                                         </td>                                        
                                         <td class="text-center align-middle">{{ $dealCategory->category_name }}</td>
                                         <td class="text-center align-middle">{{ $dealCategory->deal_price }}</td>

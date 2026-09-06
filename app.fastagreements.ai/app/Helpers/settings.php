@@ -1,5 +1,37 @@
 <?php
 
+if (!function_exists('s3_asset')) {
+    /**
+     * Build a public URL for a file stored on the S3 disk (uploaded party
+     * photos, Aadhaar images, videos, PDFs, etc.). Use this in views instead
+     * of asset($path) / public_path($path) for anything the app itself
+     * uploaded — those files live on S3 now, not in public/.
+     *
+     * Returns null if $path is empty, so callers can do:
+     *   {{ s3_asset($model->image) ?: asset('assets/img/placeholder.jpg') }}
+     */
+    function s3_asset(?string $path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('s3')->url($path);
+    }
+}
+
+if (!function_exists('s3_asset_or')) {
+    /**
+     * Same as s3_asset(), but with a required fallback URL for when the
+     * model has no file at all — a one-liner replacement for the common
+     * `$x ? asset($x) : asset('placeholder.jpg')` pattern in the views.
+     */
+    function s3_asset_or(?string $path, string $fallbackUrl): string
+    {
+        return s3_asset($path) ?: $fallbackUrl;
+    }
+}
+
 if (!function_exists('setting')) {
     /**
      * Get setting value by key.

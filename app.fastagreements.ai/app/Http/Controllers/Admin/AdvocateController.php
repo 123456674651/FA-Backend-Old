@@ -4,15 +4,19 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Advocate;
+use App\Traits\UploadsToS3;
 use App\Http\Requests\StoreAdvocateRequest;
 use App\Http\Requests\UpdateAdvocateRequest;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 use Exception;
 
 class AdvocateController extends Controller
 {
+    use UploadsToS3;
+
     /**
      * Display a listing of the resource.
      */
@@ -35,8 +39,8 @@ class AdvocateController extends Controller
             return DataTables::of($query)
                 ->addIndexColumn()
                 ->addColumn('image', function ($row) {
-                    if ($row->image && file_exists(public_path($row->image))) {
-                        return '<div class="text-center"><img src="' . asset($row->image) . '" class="rounded-circle" width="50" height="50" style="object-fit: cover;"></div>';
+                    if ($row->image && Storage::disk('s3')->exists($row->image)) {
+                        return '<div class="text-center"><img src="' . Storage::disk('s3')->url($row->image) . '" class="rounded-circle" width="50" height="50" style="object-fit: cover;"></div>';
                     }
                     return '<div class="text-center"><img src="' . asset('assets/img/profile-img.jpg') . '" class="rounded-circle" width="50" height="50" style="object-fit: cover;"></div>';
                 })
@@ -137,36 +141,21 @@ class AdvocateController extends Controller
             if ($request->hasFile('image')) {
                 $file = $request->file('image');
                 $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $destPath = public_path('advocate/images');
-                if (!file_exists($destPath)) {
-                    mkdir($destPath, 0755, true);
-                }
-                $file->move($destPath, $filename);
-                $data['image'] = 'advocate/images/' . $filename;
+                $data['image'] = $this->uploadToS3($file, 'advocate/images', $filename);
             }
 
             // Handle Video Upload
             if ($request->hasFile('video')) {
                 $file = $request->file('video');
                 $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $destPath = public_path('advocate/videos');
-                if (!file_exists($destPath)) {
-                    mkdir($destPath, 0755, true);
-                }
-                $file->move($destPath, $filename);
-                $data['video'] = 'advocate/videos/' . $filename;
+                $data['video'] = $this->uploadToS3($file, 'advocate/videos', $filename);
             }
 
             // Handle Document Upload
             if ($request->hasFile('document')) {
                 $file = $request->file('document');
                 $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $destPath = public_path('advocate/documents');
-                if (!file_exists($destPath)) {
-                    mkdir($destPath, 0755, true);
-                }
-                $file->move($destPath, $filename);
-                $data['document'] = 'advocate/documents/' . $filename;
+                $data['document'] = $this->uploadToS3($file, 'advocate/documents', $filename);
             }
 
             Advocate::create($data);
@@ -214,49 +203,28 @@ class AdvocateController extends Controller
             // Update Image
             if ($request->hasFile('image')) {
                 // Delete old image
-                if ($advocate->image && file_exists(public_path($advocate->image))) {
-                    @unlink(public_path($advocate->image));
-                }
+                $this->deleteFromS3($advocate->image);
                 $file = $request->file('image');
                 $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $destPath = public_path('advocate/images');
-                if (!file_exists($destPath)) {
-                    mkdir($destPath, 0755, true);
-                }
-                $file->move($destPath, $filename);
-                $data['image'] = 'advocate/images/' . $filename;
+                $data['image'] = $this->uploadToS3($file, 'advocate/images', $filename);
             }
 
             // Update Video
             if ($request->hasFile('video')) {
                 // Delete old video
-                if ($advocate->video && file_exists(public_path($advocate->video))) {
-                    @unlink(public_path($advocate->video));
-                }
+                $this->deleteFromS3($advocate->video);
                 $file = $request->file('video');
                 $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $destPath = public_path('advocate/videos');
-                if (!file_exists($destPath)) {
-                    mkdir($destPath, 0755, true);
-                }
-                $file->move($destPath, $filename);
-                $data['video'] = 'advocate/videos/' . $filename;
+                $data['video'] = $this->uploadToS3($file, 'advocate/videos', $filename);
             }
 
             // Update Document
             if ($request->hasFile('document')) {
                 // Delete old document
-                if ($advocate->document && file_exists(public_path($advocate->document))) {
-                    @unlink(public_path($advocate->document));
-                }
+                $this->deleteFromS3($advocate->document);
                 $file = $request->file('document');
                 $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $destPath = public_path('advocate/documents');
-                if (!file_exists($destPath)) {
-                    mkdir($destPath, 0755, true);
-                }
-                $file->move($destPath, $filename);
-                $data['document'] = 'advocate/documents/' . $filename;
+                $data['document'] = $this->uploadToS3($file, 'advocate/documents', $filename);
             }
 
             $advocate->update($data);
@@ -275,16 +243,10 @@ class AdvocateController extends Controller
         try {
             $advocate = Advocate::findOrFail($id);
 
-            // Delete associated physical files
-            if ($advocate->image && file_exists(public_path($advocate->image))) {
-                @unlink(public_path($advocate->image));
-            }
-            if ($advocate->video && file_exists(public_path($advocate->video))) {
-                @unlink(public_path($advocate->video));
-            }
-            if ($advocate->document && file_exists(public_path($advocate->document))) {
-                @unlink(public_path($advocate->document));
-            }
+            // Delete associated files from S3
+            $this->deleteFromS3($advocate->image);
+            $this->deleteFromS3($advocate->video);
+            $this->deleteFromS3($advocate->document);
 
             $advocate->delete();
 

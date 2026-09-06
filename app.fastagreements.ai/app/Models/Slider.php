@@ -29,6 +29,6 @@ class Slider extends Model
      */
     public function getSliderImageUrlAttribute()
     {
-        return asset('admin/images/sliders/' . $this->image);
+        return s3_asset('admin/images/sliders/' . $this->image);
     }
 }

@@ -67,7 +67,7 @@
                         <div class="border rounded p-3 text-center bg-light">
                             <h6 class="fw-bold mb-3">Banner Image</h6>
                             @if($template->image)
-                                <img src="{{ asset($template->image) }}" class="img-fluid rounded shadow-sm" style="max-height: 250px;">
+                                <img src="{{ s3_asset($template->image) }}" class="img-fluid rounded shadow-sm" style="max-height: 250px;">
                             @else
                                 <div class="py-5 text-muted">
                                     <i class="bi bi-image" style="font-size: 3rem;"></i>

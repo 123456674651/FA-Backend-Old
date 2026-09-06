@@ -44,7 +44,7 @@
                                     <div class="col-sm-10">
                                         <div class="mb-4 d-flex justify-content-centerx">
                                             <img id="selectedImage"
-                                                src="{{ asset('admin/images/category_image_thumb/' . $dealCategory->category_image) }}"
+                                                src="{{ s3_asset('admin/images/category_image_thumb/' . $dealCategory->category_image) }}"
                                                 alt="category image" style="width: 100px;" />
                                         </div>
                                         <div class="d-flex justify-content-centerx">
