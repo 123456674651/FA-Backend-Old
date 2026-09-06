@@ -3,8 +3,10 @@
 namespace Tests\Unit;
 
 use App\Services\Auth\Msg91TokenVerifier;
+use App\Services\Auth\Msg91UnavailableException;
 use App\Services\Auth\PhoneVerificationException;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -35,6 +37,27 @@ class Msg91TokenVerifierTest extends TestCase
 
         $this->assertSame('919876543210', $identity['phone_number']);
         $this->assertNotSame('', $identity['uid']);
+    }
+
+    /**
+     * `uid` feeds Task 7's replay guard, which is keyed on it behind a UNIQUE
+     * index that is never pruned. If `uid` were the phone number, a
+     * customer's second legitimate verification of their own number would
+     * collide with their first and be rejected as a replay, forever.
+     */
+    public function test_uid_is_per_verification_not_per_number(): void
+    {
+        Http::fake([self::URL => Http::response(['message' => '919876543210', 'type' => 'success'])]);
+
+        $first = $this->verifier()->verify('token-one');
+        $second = $this->verifier()->verify('token-two');
+
+        // Same number, different tokens: the replay-guard key must differ, or a
+        // customer's second legitimate verification of their own number would be
+        // rejected as a replay.
+        $this->assertSame($first['phone_number'], $second['phone_number']);
+        $this->assertNotSame($first['uid'], $second['uid']);
+        $this->assertStringNotContainsString('9876543210', $first['uid']);
     }
 
     public function test_it_sends_the_key_in_the_body_under_the_hyphenated_field(): void
@@ -97,10 +120,11 @@ class Msg91TokenVerifierTest extends TestCase
         $this->verifier()->verify('a-token');
     }
 
-    public function test_a_success_whose_identifier_is_not_a_phone_number_fails_hard(): void
+    #[DataProvider('nonPhoneIdentifiers')]
+    public function test_a_success_whose_identifier_is_not_a_phone_number_fails_hard(string $identifier): void
     {
         Http::fake([self::URL => Http::response([
-            'message' => 'someone@example.com',
+            'message' => $identifier,
             'type' => 'success',
         ])]);
 
@@ -108,11 +132,46 @@ class Msg91TokenVerifierTest extends TestCase
         $this->verifier()->verify('a-token');
     }
 
-    public function test_an_http_failure_is_rejected_not_swallowed(): void
+    /** @return array<string, array{0: string}> */
+    public static function nonPhoneIdentifiers(): array
+    {
+        return [
+            'an email address' => ['someone@example.com'],
+            // MobileNumber::toStored() takes the last ten digits of whatever
+            // it is given, so a sentence that merely contains a number must
+            // not be accepted as a verified one.
+            'a sentence containing a number' => ['Your code 9876543210 is verified on 2026-09-06'],
+        ];
+    }
+
+    /**
+     * An MSG91 outage is our fault, not the caller's bad code. It must not
+     * render the same way an actually-invalid token does — that tells every
+     * customer their code is wrong while the logs stay silent about the real
+     * cause. bootstrap/app.php maps this type to 503 VERIFICATION_UNAVAILABLE
+     * ahead of the generic 401 PhoneVerificationException handler.
+     */
+    public function test_an_http_failure_surfaces_as_unavailable_not_invalid_token(): void
     {
         Http::fake([self::URL => Http::response('gateway down', 502)]);
 
-        $this->expectException(PhoneVerificationException::class);
+        $this->expectException(Msg91UnavailableException::class);
         $this->verifier()->verify('a-token');
+    }
+
+    /** Untested early return in security code otherwise: a missing key must not silently pass through. */
+    public function test_a_missing_auth_key_throws_rather_than_calling_out(): void
+    {
+        config()->set('apiauth.msg91.auth_key', '');
+
+        Http::fake([self::URL => Http::response(['message' => '919876543210', 'type' => 'success'])]);
+
+        $this->expectException(RuntimeException::class);
+
+        try {
+            $this->verifier()->verify('a-token');
+        } finally {
+            Http::assertNothingSent();
+        }
     }
 }

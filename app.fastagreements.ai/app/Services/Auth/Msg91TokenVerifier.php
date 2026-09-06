@@ -3,10 +3,10 @@
 namespace App\Services\Auth;
 
 use App\Support\MobileNumber;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
-use Throwable;
 
 /**
  * Verifies MSG91 OTP widget access tokens.
@@ -27,9 +27,20 @@ class Msg91TokenVerifier implements PhoneIdentityVerifier
     private const CODE_BAD_AUTHKEY = '201';
 
     /**
+     * `uid` is a digest of the *token being spent*, not the verified number.
+     * It is the replay-guard key (Task 7's `used_phone_tokens.provider_ref`,
+     * behind a UNIQUE index that is never pruned) and must be unique per
+     * verification, not per phone number — otherwise a customer's second
+     * legitimate verification of their own number would collide with their
+     * first, forever, and one customer confirming someone else's number
+     * (e.g. a guarantor's) would lock that number out for everyone. Storing
+     * a digest rather than the live token also means nothing spendable sits
+     * in that table.
+     *
      * @return array{uid: string, phone_number: string}
      *
      * @throws Msg91TokenException
+     * @throws Msg91UnavailableException
      */
     public function verify(string $token): array
     {
@@ -54,7 +65,19 @@ class Msg91TokenVerifier implements PhoneIdentityVerifier
             throw new Msg91TokenException('The phone verification token is invalid or has expired.');
         }
 
-        $identifier = (string) ($response['message'] ?? '');
+        $identifier = trim((string) ($response['message'] ?? ''));
+
+        // Must BE a number, not merely contain one: MobileNumber::toStored()
+        // takes the last ten digits of whatever it is given, so a sentence
+        // ("Your number 9876543210 was verified on...") or a numeric MSG91
+        // request id would otherwise be silently accepted as a verified
+        // mobile and used to auto-provision a customer at a fabricated number.
+        if (!preg_match('/^\+?\d{10,15}$/', $identifier)) {
+            Log::error('MSG91 verified a token but returned no usable number: ' . json_encode($response));
+
+            throw new Msg91TokenException('That verification did not confirm a phone number.');
+        }
+
         $mobile = MobileNumber::toStored($identifier);
 
         // A success carrying no usable number is not something to work around.
@@ -67,7 +90,7 @@ class Msg91TokenVerifier implements PhoneIdentityVerifier
             throw new Msg91TokenException('That verification did not confirm a phone number.');
         }
 
-        return ['uid' => $identifier, 'phone_number' => $identifier];
+        return ['uid' => hash('sha256', $token), 'phone_number' => $identifier];
     }
 
     /** @return array<string, mixed> */
@@ -79,16 +102,25 @@ class Msg91TokenVerifier implements PhoneIdentityVerifier
             throw new RuntimeException('No MSG91 auth key configured. Set MSG91_AUTH_KEY in .env.');
         }
 
+        // A non-numeric MSG91_TIMEOUT_SECONDS casts to 0, and Guzzle reads
+        // timeout => 0 as "no timeout" — a typo would pin PHP-FPM workers
+        // against a hung MSG91 indefinitely instead of just being slow.
+        $timeout = max(1, (int) config('apiauth.msg91.timeout', 10));
+
         try {
-            $response = Http::timeout((int) config('apiauth.msg91.timeout', 10))
+            $response = Http::timeout($timeout)
                 ->acceptJson()
                 ->post((string) config('apiauth.msg91.verify_url'), [
                     'authkey' => $authKey,
                     // Hyphenated, per MSG91's API. Not a typo.
                     'access-token' => $token,
                 ]);
-        } catch (Throwable) {
-            throw new Msg91TokenException('Could not reach MSG91 to verify the number. Please try again.');
+        } catch (ConnectionException $e) {
+            // Our outage, not the caller's bad code — never the request body,
+            // which carries the auth key.
+            Log::error('MSG91 was unreachable while verifying a token: ' . $e->getMessage());
+
+            throw new Msg91UnavailableException('Could not reach MSG91 to verify the number. Please try again.');
         }
 
         // Note this is NOT the success test. MSG91 answers 200 for a rejected
@@ -96,7 +128,9 @@ class Msg91TokenVerifier implements PhoneIdentityVerifier
         // in the body distinguishes them. This catches transport failures and
         // 5xx, nothing more.
         if (!$response->successful()) {
-            throw new Msg91TokenException('Could not reach MSG91 to verify the number. Please try again.');
+            Log::error('MSG91 answered with a transport failure while verifying a token: HTTP ' . $response->status());
+
+            throw new Msg91UnavailableException('Could not reach MSG91 to verify the number. Please try again.');
         }
 
         $body = $response->json();

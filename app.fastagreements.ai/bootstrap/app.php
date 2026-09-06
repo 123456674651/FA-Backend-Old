@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AuthenticateJwt;
 use App\Http\Middleware\EnsureMinimumAppVersion;
+use App\Services\Auth\Msg91UnavailableException;
 use App\Services\Auth\PhoneVerificationException;
 use App\Support\ApiResponse;
 use Illuminate\Foundation\Application;
@@ -28,6 +29,21 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('api', EnsureMinimumAppVersion::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        // Registered ahead of the general PhoneVerificationException handler
+        // below — Laravel matches the first registered handler whose type
+        // fits, and Msg91UnavailableException extends PhoneVerificationException,
+        // so the order here is load-bearing. An MSG91 outage is our fault, not
+        // evidence the caller's code was wrong: it must not render as the same
+        // 401 a genuinely bad token gets, or every customer during an outage is
+        // told their code is invalid.
+        $exceptions->render(function (Msg91UnavailableException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return ApiResponse::error(503, 'VERIFICATION_UNAVAILABLE', $e->getMessage());
+            }
+
+            return null;
+        });
+
         // A rejected phone-verification token describes what the caller sent, so
         // it is a 401 — not the 500 an uncaught RuntimeException would otherwise
         // produce. Widened from FirebaseTokenException to the interface's base
