@@ -5,6 +5,25 @@
 /public/storage
 /storage/*.key
 /vendor
+
+# Runtime-generated output and user uploads. The folders must exist on the
+# server (a .gitkeep is tracked), but their contents are never committed.
+/public/word/*
+/public/agreement_pdfs/*
+/public/admin/images/*
+/public/uploads/*
+!/public/word/.gitkeep
+!/public/agreement_pdfs/.gitkeep
+!/public/admin/images/.gitkeep
+!/public/uploads/.gitkeep
+
+# Dead trees removed from the repo — never bring them back.
+/public/public/
+/public/'assets'/
+/public/assets/videos_and_images/
+
+# Local leftovers from before agreement/invoice PDFs moved to S3.
+/public/assets/pdfs/
 .env
 .env.backup
 .env.production
