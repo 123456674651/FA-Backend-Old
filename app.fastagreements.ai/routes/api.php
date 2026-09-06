@@ -21,6 +21,7 @@ use App\Http\Controllers\api\SubscriptionApiController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Middleware\EnsureMinimumAppVersion;
 use App\Models\Sceme;
+use App\Support\ApiResponse;
 
 /*
 |--------------------------------------------------------------------------
@@ -53,7 +54,17 @@ use App\Models\Sceme;
 */
 
 // Sign-in. Public by necessity — the caller has no session yet.
-Route::post('auth/firebase-exchange', [AuthApiController::class, 'firebaseExchange']);
+Route::post('auth/otp-exchange', [AuthApiController::class, 'otpExchange']);
+
+// Retired with the move off Firebase. Answers 410 rather than 404 so an old
+// build gets a clear reason; MIN_APP_VERSION is what actually moves people on.
+// Delete once telemetry shows no traffic.
+Route::post('auth/firebase-exchange', fn () => ApiResponse::error(
+    410,
+    'ENDPOINT_RETIRED',
+    'This app version is no longer supported. Please update to continue.',
+));
+
 Route::get('auth/exists', [AuthApiController::class, 'exists']);
 
 // Catalogue and reference data. All read-only; the write halves live in the

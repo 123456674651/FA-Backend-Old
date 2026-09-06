@@ -23,7 +23,7 @@ class AuthExchangeTest extends TestCase
 
     private function endpoint(): string
     {
-        return '/api/auth/firebase-exchange';
+        return '/api/auth/otp-exchange';
     }
 
     public function test_a_verified_number_issues_a_session_token(): void
@@ -36,7 +36,7 @@ class AuthExchangeTest extends TestCase
 
         $this->verifier->willReturn('uid-1', '+91' . $mobile);
 
-        $response = $this->postJson($this->endpoint(), ['id_token' => 'a-token']);
+        $response = $this->postJson($this->endpoint(), ['access_token' => 'a-token']);
 
         $response->assertOk()
             ->assertJsonPath('status', true)
@@ -51,7 +51,7 @@ class AuthExchangeTest extends TestCase
         $mobile = '9000000002';
         $this->verifier->willReturn('uid-2', '+91' . $mobile);
 
-        $this->postJson($this->endpoint(), ['id_token' => 't'])
+        $this->postJson($this->endpoint(), ['access_token' => 't'])
             ->assertOk()
             ->assertJsonPath('data.is_new_customer', true)
             ->assertJsonPath('data.profile_complete', false);
@@ -64,7 +64,7 @@ class AuthExchangeTest extends TestCase
         $this->verifier->willReturn('uid-3', '+919000000003');
 
         $this->postJson($this->endpoint(), [
-            'id_token' => 't',
+            'access_token' => 't',
             'mobile' => '9999999999',
         ])->assertOk();
 
@@ -76,7 +76,7 @@ class AuthExchangeTest extends TestCase
     {
         $this->verifier->willThrow('nope');
 
-        $this->postJson($this->endpoint(), ['id_token' => 'bad'])
+        $this->postJson($this->endpoint(), ['access_token' => 'bad'])
             ->assertStatus(401)
             ->assertJsonPath('status', false);
     }
@@ -91,7 +91,7 @@ class AuthExchangeTest extends TestCase
 
         $this->verifier->willReturn('uid-4', '+91' . $mobile);
 
-        $this->postJson($this->endpoint(), ['id_token' => 't'])
+        $this->postJson($this->endpoint(), ['access_token' => 't'])
             ->assertStatus(403)
             ->assertJsonPath('code', 'ACCOUNT_DISABLED');
     }
@@ -100,7 +100,7 @@ class AuthExchangeTest extends TestCase
     {
         $this->verifier->willReturn('uid-5', '+4477009');
 
-        $this->postJson($this->endpoint(), ['id_token' => 't'])
+        $this->postJson($this->endpoint(), ['access_token' => 't'])
             ->assertStatus(422)
             ->assertJsonPath('code', 'PHONE_UNSUPPORTED');
     }
@@ -108,5 +108,38 @@ class AuthExchangeTest extends TestCase
     public function test_a_missing_token_is_rejected(): void
     {
         $this->postJson($this->endpoint(), [])->assertStatus(422);
+    }
+
+    public function test_the_retired_firebase_route_is_gone(): void
+    {
+        $this->postJson('/api/auth/firebase-exchange', ['id_token' => 't'])
+            ->assertStatus(410)
+            ->assertJsonPath('code', 'ENDPOINT_RETIRED');
+    }
+
+    public function test_the_old_field_name_is_not_accepted(): void
+    {
+        $this->postJson($this->endpoint(), ['id_token' => 't'])->assertStatus(422);
+    }
+
+    public function test_an_fcm_token_in_the_request_is_stored(): void
+    {
+        $mobile = '9000000006';
+        DB::table('customers')->insert([
+            'name' => 'Pusher', 'mobile' => $mobile, 'address' => '', 'is_active' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->verifier->willReturn('uid-6', '+91' . $mobile);
+
+        $this->postJson($this->endpoint(), [
+            'access_token' => 't',
+            'fcm_token' => 'device-abc',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('customers', [
+            'mobile' => $mobile,
+            'fcm_token' => 'device-abc',
+        ]);
     }
 }

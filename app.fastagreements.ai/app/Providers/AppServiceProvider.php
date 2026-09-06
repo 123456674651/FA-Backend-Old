@@ -20,10 +20,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // The phone-verification provider. One line changes this to MSG91.
         $this->app->bind(
             \App\Services\Auth\PhoneIdentityVerifier::class,
-            \App\Services\Auth\FirebaseIdTokenVerifier::class,
+            \App\Services\Auth\Msg91TokenVerifier::class,
         );
 
         $this->app->bind(RazorpayGateway::class, fn () => new RazorpayApiGateway(

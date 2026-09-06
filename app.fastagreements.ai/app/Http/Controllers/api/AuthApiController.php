@@ -20,8 +20,8 @@ use Illuminate\Validation\ValidationException;
  * Replaces the old `verify_mobile` / `verify_mobile_otp` / `customer_register`
  * trio, which generated its own six-digit code, returned that code in the
  * response body, and issued no session at all. Here the code is sent and
- * checked by Firebase on the handset, and what reaches this server is a token
- * signed by Google that the app cannot fabricate.
+ * checked by MSG91 on the handset, and what reaches this server is a token
+ * this server can verify against MSG91 that the app cannot fabricate.
  */
 class AuthApiController extends Controller
 {
@@ -32,17 +32,17 @@ class AuthApiController extends Controller
     }
 
     /**
-     * Trades a verified Firebase ID token for a session token.
+     * Trades a verified phone token for a session token.
      *
      * Auto-provisions the customer on first sign-in, so a new user is not
      * bounced through a separate registration call before they have a session.
      * The response says whether the profile still needs filling in.
      */
-    public function firebaseExchange(Request $request): JsonResponse
+    public function otpExchange(Request $request): JsonResponse
     {
-        $request->validate(['id_token' => 'required|string']);
+        $request->validate(['access_token' => 'required|string']);
 
-        $identity = $this->verifier->verify($request->input('id_token'));
+        $identity = $this->verifier->verify($request->input('access_token'));
 
         $mobile = MobileNumber::toStored($identity['phone_number']);
 
