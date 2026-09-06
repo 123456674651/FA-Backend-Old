@@ -46,6 +46,20 @@ return [
     ],
 
     /*
+    | MSG91 OTP widget. The auth key travels in the request body of the verify
+    | call, so it is server-side only — it must never be compiled into the app.
+    | The widget id is public and lives in the Flutter build.
+    */
+    'msg91' => [
+        'auth_key' => env('MSG91_AUTH_KEY'),
+        'verify_url' => env(
+            'MSG91_VERIFY_URL',
+            'https://control.msg91.com/api/v5/widget/verifyAccessToken'
+        ),
+        'timeout' => (int) env('MSG91_TIMEOUT_SECONDS', 10),
+    ],
+
+    /*
     | Builds older than this are refused with 426 and a message telling the
     | user to update, rather than failing with confusing 401s on every call.
     | Null disables the check entirely.
