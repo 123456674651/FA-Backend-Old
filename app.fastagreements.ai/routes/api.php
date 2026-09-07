@@ -31,7 +31,8 @@ use App\Support\ApiResponse;
 | Three tiers:
 |
 |   public       – reference data drawn before anyone signs in
-|   auth.jwt     – a customer, identified by a Firebase-issued session token
+|   auth.jwt     – a customer, identified by a session token issued after an
+|                  MSG91-verified phone number
 |   auth         – an admin, on the existing Blade session guard
 |
 | Nothing below reads a customer id out of a request body. Identity comes from
@@ -42,7 +43,7 @@ use App\Support\ApiResponse;
 |   GET  /advocates         a hardcoded closure that shadowed the controller
 |   POST /verify_mobile     generated its own OTP and returned it in the body
 |   POST /verify_mobile_otp issued no session
-|   POST /customer_register  ) both replaced by /auth/firebase-exchange, which
+|   POST /customer_register  ) both replaced by /auth/otp-exchange, which
 |   POST /registertion       ) provisions the account on first verified sign-in
 |
 */

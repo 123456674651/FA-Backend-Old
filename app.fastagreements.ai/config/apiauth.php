@@ -33,6 +33,10 @@ return [
     | this needs no service account. Left null here so it can fall back to the
     | `firebase_project_id` row in the settings table, which is where the
     | existing push-notification code already reads it from.
+    |
+    | Unused pending removal — retired in favour of MSG91 (see
+    | app/Services/Auth/FirebaseIdTokenVerifier.php, now commented out). Left
+    | here because a restore would need it.
     */
     'firebase' => [
         'project_id' => env('FIREBASE_PROJECT_ID'),

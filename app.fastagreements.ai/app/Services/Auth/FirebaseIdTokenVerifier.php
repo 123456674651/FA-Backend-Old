@@ -2,6 +2,23 @@
 
 namespace App\Services\Auth;
 
+/*
+ * Firebase Phone Auth verification — RETIRED 2026-09-07.
+ *
+ * Kept commented rather than deleted so it can be restored by hand if MSG91
+ * proves unreliable. Replaced by Msg91TokenVerifier because Firebase's abuse
+ * policy was blocking legitimate customers at sign-in, with no appeal and no
+ * lever on our side.
+ *
+ * To restore: uncomment, and point the PhoneIdentityVerifier binding in
+ * AppServiceProvider back to this class. Note `toStoredMobile` no longer lives
+ * here — it is App\Support\MobileNumber.
+ *
+ * Do NOT remove firebase/php-jwt from composer.json on account of this file:
+ * that namespace is the JWT library, not Google Firebase, and JwtService signs
+ * our own sessions with it.
+ *
+
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Support\Facades\Cache;
@@ -21,7 +38,7 @@ use Throwable;
  *
  * Only a project id is needed. Verification uses Google's *public* x509
  * certificates, so unlike FCM this requires no service account.
- */
+ *\/
 class FirebaseIdTokenVerifier implements PhoneIdentityVerifier
 {
     /**
@@ -29,7 +46,7 @@ class FirebaseIdTokenVerifier implements PhoneIdentityVerifier
      *
      * @throws FirebaseTokenException for anything suspect — wrong project, bad
      *         signature, expired, or a sign-in method that proves no phone number.
-     */
+     *\/
     public function verify(string $token): array
     {
         $projectId = $this->projectId();
@@ -79,7 +96,7 @@ class FirebaseIdTokenVerifier implements PhoneIdentityVerifier
      * cache honours their own max-age rather than a number picked here.
      *
      * @return array<string, Key>
-     */
+     *\/
     private function signingKeys(): array
     {
         $cacheKey = (string) config('apiauth.firebase.certs_cache_key', 'firebase_securetoken_certs');
@@ -109,7 +126,7 @@ class FirebaseIdTokenVerifier implements PhoneIdentityVerifier
         return $keys;
     }
 
-    /** @return array<string, string> */
+    /** @return array<string, string> *\/
     private function fetchCertificates(string $cacheKey): array
     {
         $url = (string) config('apiauth.firebase.certs_url');
@@ -137,7 +154,7 @@ class FirebaseIdTokenVerifier implements PhoneIdentityVerifier
         return $certificates;
     }
 
-    /** Honours Google's own max-age; falls back so a malformed header cannot disable caching. */
+    /** Honours Google's own max-age; falls back so a malformed header cannot disable caching. *\/
     private function cacheTtlFrom(?string $cacheControl): int
     {
         $fallback = (int) config('apiauth.firebase.certs_fallback_ttl', 3600);
@@ -172,3 +189,4 @@ class FirebaseIdTokenVerifier implements PhoneIdentityVerifier
         return $projectId;
     }
 }
+*/
