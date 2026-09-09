@@ -5,6 +5,7 @@ namespace App\Http\Controllers\api;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Services\Auth\JwtService;
+use App\Services\Auth\Msg91OtpService;
 use App\Services\Auth\PhoneIdentityVerifier;
 use App\Support\ApiResponse;
 use App\Support\MobileNumber;
@@ -15,13 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Customer sign-in.
- *
- * Replaces the old `verify_mobile` / `verify_mobile_otp` / `customer_register`
- * trio, which generated its own six-digit code, returned that code in the
- * response body, and issued no session at all. Here the code is sent and
- * checked by MSG91 on the handset, and what reaches this server is a token
- * this server can verify against MSG91 that the app cannot fabricate.
+ * Customer sign-in & OTP Management.
  */
 class AuthApiController extends Controller
 {

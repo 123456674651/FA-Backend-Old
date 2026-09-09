@@ -3,142 +3,62 @@
     <!-- End Sidebar-->
     <main id="main" class="main">
 
-        <div class="pagetitle">
-            <h1>Dashboard</h1>
-            <nav>
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="index.html">Home</a></li>
-                    <li class="breadcrumb-item active">Dashboard</li>
-                </ol>
-            </nav>
+        @php
+            $rangeFrom = request('from_date') ? \Carbon\Carbon::parse(request('from_date')) : now()->startOfMonth();
+            $rangeTo = request('to_date') ? \Carbon\Carbon::parse(request('to_date')) : now()->endOfMonth();
+        @endphp
+
+        <div class="dash-greeting">
+            <div>
+                @php
+                    $hour = now()->hour;
+                    $greeting = $hour < 12 ? 'Good Morning' : ($hour < 17 ? 'Good Afternoon' : 'Good Evening');
+                @endphp
+                <h1>{{ $greeting }}, {{ explode(' ', auth()->user()->name)[0] }}!</h1>
+                <p>Here's what's happening with your dashboard today.</p>
+            </div>
+
+            <form method="GET" action="{{ route('dashboard.index') }}" id="dashDateForm" class="dash-date-form">
+                <input type="hidden" name="from_date" id="from_date_input" value="{{ $rangeFrom->format('Y-m-d') }}">
+                <input type="hidden" name="to_date" id="to_date_input" value="{{ $rangeTo->format('Y-m-d') }}">
+                <button type="button" class="dash-date-range" id="dashDateRangeBtn">
+                    <span id="dashDateRangeLabel">{{ $rangeFrom->format('d M, Y') }} to {{ $rangeTo->format('d M, Y') }}</span>
+                    <i class="bi bi-calendar3"></i>
+                </button>
+            </form>
         </div><!-- End Page Title -->
 
         <section class="section dashboard">
             <div class="row">
 
-                <!-- Dashboard Filters -->
-                <div class="col-12 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title">Dashboard Filters</h5>
-                            <form method="GET" action="{{ route('dashboard.index') }}" class="row g-2 align-items-end">
-                                <div class="col-sm-3">
-                                    <label class="form-label small">From Date</label>
-                                    <input type="date" name="from_date" class="form-control" value="{{ request('from_date') }}">
-                                </div>
-                                <div class="col-sm-3">
-                                    <label class="form-label small">To Date</label>
-                                    <input type="date" name="to_date" class="form-control" value="{{ request('to_date') }}">
-                                </div>
-                                <div class="col-sm-6 d-flex gap-2">
-                                    <button type="submit" class="btn btn-primary">Filter</button>
-                                    <a href="{{ route('dashboard.index') }}" class="btn btn-secondary">Reset</a>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Statistics Cards -->
                 <div class="col-12 mb-4">
                     <div class="row g-3">
-                        <div class="col-lg-3 col-md-6 col-12">
-                            <div class="card shadow-sm rounded h-100">
-                                <div class="card-body d-flex align-items-center">
-                                    <div class="me-3 p-3 rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px;box-shadow:0 6px 18px rgba(13,110,253,0.12);">
-                                        <i class="bi bi-people-fill fs-4"></i>
-                                    </div>
-                                    <div>
-                                        <small class="text-muted">Total Registered Users</small>
-                                        <h4 class="mb-0 fw-bold" data-count>{{ $totalRegisteredUsers ?? 0 }}</h4>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        @php
+                            $stats = [
+                                ['key' => 'totalRegisteredUsers', 'label' => 'Total Registered Users', 'value' => $totalRegisteredUsers ?? 0, 'icon' => 'bi-people-fill', 'color' => 'blue'],
+                                ['key' => 'totalAgreements', 'label' => 'Total Agreements', 'value' => $totalAgreements ?? $dealsCount ?? 0, 'icon' => 'bi-file-earmark-text', 'color' => 'green'],
+                                ['key' => 'todaysAgreements', 'label' => "Today's Agreements", 'value' => $todaysAgreements ?? 0, 'icon' => 'bi-calendar-day', 'color' => 'amber'],
+                                ['key' => 'monthlyAgreements', 'label' => 'Monthly Agreements', 'value' => $monthlyAgreements ?? 0, 'icon' => 'bi-calendar4-week', 'color' => 'cyan'],
+                                ['key' => 'activeCategories', 'label' => 'Active Categories', 'value' => $activeCategories ?? 0, 'icon' => 'bi-tags', 'color' => 'slate'],
+                                ['key' => 'activeAdvocates', 'label' => 'Active Advocates', 'value' => $activeAdvocates ?? 0, 'icon' => 'bi-person-badge', 'color' => 'indigo'],
+                                ['key' => 'activeCustomers', 'label' => 'Active Customers', 'value' => $activeCustomers ?? $customersCount ?? 0, 'icon' => 'bi-people', 'color' => 'teal'],
+                            ];
+                        @endphp
 
-                        <div class="col-lg-3 col-md-6 col-12">
-                            <div class="card shadow-sm rounded h-100">
-                                <div class="card-body d-flex align-items-center">
-                                    <div class="me-3 p-3 rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px;box-shadow:0 6px 18px rgba(25,135,84,0.12);">
-                                        <i class="bi bi-file-earmark-text fs-4"></i>
+                        @foreach ($stats as $stat)
+                            <div class="col-xl-3 col-lg-4 col-md-6 col-12">
+                                <div class="stat-card">
+                                    <div class="stat-card-top">
+                                        <span class="stat-label">{{ $stat['label'] }}</span>
+                                        <span class="stat-icon stat-icon-{{ $stat['color'] }}">
+                                            <i class="bi {{ $stat['icon'] }}"></i>
+                                        </span>
                                     </div>
-                                    <div>
-                                        <small class="text-muted">Total Agreements</small>
-                                        <h4 class="mb-0 fw-bold" data-count>{{ $totalAgreements ?? $dealsCount ?? 0 }}</h4>
-                                    </div>
+                                    <div class="stat-value" data-count data-stat="{{ $stat['key'] }}">{{ $stat['value'] }}</div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="col-lg-3 col-md-6 col-12">
-                            <div class="card shadow-sm rounded h-100">
-                                <div class="card-body d-flex align-items-center">
-                                    <div class="me-3 p-3 rounded-circle bg-warning text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px;box-shadow:0 6px 18px rgba(255,193,7,0.12);">
-                                        <i class="bi bi-calendar-day fs-4"></i>
-                                    </div>
-                                    <div>
-                                        <small class="text-muted">Today's Agreements</small>
-                                        <h4 class="mb-0 fw-bold" data-count>{{ $todaysAgreements ?? 0 }}</h4>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-3 col-md-6 col-12">
-                            <div class="card shadow-sm rounded h-100">
-                                <div class="card-body d-flex align-items-center">
-                                    <div class="me-3 p-3 rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px;box-shadow:0 6px 18px rgba(13,202,240,0.12);">
-                                        <i class="bi bi-calendar4-week fs-4"></i>
-                                    </div>
-                                    <div>
-                                        <small class="text-muted">Monthly Agreements</small>
-                                        <h4 class="mb-0 fw-bold" data-count>{{ $monthlyAgreements ?? 0 }}</h4>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-3 col-md-6 col-12">
-                            <div class="card shadow-sm rounded h-100">
-                                <div class="card-body d-flex align-items-center">
-                                    <div class="me-3 p-3 rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px;box-shadow:0 6px 18px rgba(108,117,125,0.08);">
-                                        <i class="bi bi-tags fs-4"></i>
-                                    </div>
-                                    <div>
-                                        <small class="text-muted">Active Categories</small>
-                                        <h4 class="mb-0 fw-bold" data-count>{{ $activeCategories ?? 0 }}</h4>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-3 col-md-6 col-12">
-                            <div class="card shadow-sm rounded h-100">
-                                <div class="card-body d-flex align-items-center">
-                                    <div class="me-3 p-3 rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px;box-shadow:0 6px 18px rgba(13,110,253,0.08);">
-                                        <i class="bi bi-person-badge fs-4"></i>
-                                    </div>
-                                    <div>
-                                        <small class="text-muted">Active Advocates</small>
-                                        <h4 class="mb-0 fw-bold" data-count>{{ $activeAdvocates ?? 0 }}</h4>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-3 col-md-6 col-12">
-                            <div class="card shadow-sm rounded h-100">
-                                <div class="card-body d-flex align-items-center">
-                                    <div class="me-3 p-3 rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width:56px;height:56px;box-shadow:0 6px 18px rgba(25,135,84,0.08);">
-                                        <i class="bi bi-people fs-4"></i>
-                                    </div>
-                                    <div>
-                                        <small class="text-muted">Active Customers</small>
-                                        <h4 class="mb-0 fw-bold" data-count>{{ $activeCustomers ?? $customersCount ?? 0 }}</h4>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        @endforeach
                     </div>
                 </div>
 
@@ -182,3 +102,46 @@
     </script>
 
 @stop
+
+@section('js')
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-daterangepicker/3.0.5/daterangepicker.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-daterangepicker/3.0.5/daterangepicker.min.js"></script>
+    <script>
+        $(function () {
+            var $btn = $('#dashDateRangeBtn');
+            var $label = $('#dashDateRangeLabel');
+            var $from = $('#from_date_input');
+            var $to = $('#to_date_input');
+
+            $btn.daterangepicker({
+                startDate: moment($from.val()),
+                endDate: moment($to.val()),
+                opens: 'left',
+                autoApply: false,
+                locale: { format: 'DD MMM, YYYY' }
+            }, function (start, end) {
+                $from.val(start.format('YYYY-MM-DD'));
+                $to.val(end.format('YYYY-MM-DD'));
+                $label.text(start.format('DD MMM, YYYY') + ' to ' + end.format('DD MMM, YYYY'));
+
+                var $cards = $('.stat-card').addClass('stat-card-loading');
+
+                $.get('{{ route('dashboard.index') }}', {
+                    from_date: $from.val(),
+                    to_date: $to.val()
+                }, function (data) {
+                    $('[data-stat]').each(function () {
+                        var val = data[$(this).data('stat')] ?? 0;
+                        $(this).text(val);
+                    });
+                    if (window.history.replaceState) {
+                        window.history.replaceState(null, '', '{{ route('dashboard.index') }}?from_date=' + $from.val() + '&to_date=' + $to.val());
+                    }
+                }).always(function () {
+                    $cards.removeClass('stat-card-loading');
+                });
+            });
+        });
+    </script>
+@endsection

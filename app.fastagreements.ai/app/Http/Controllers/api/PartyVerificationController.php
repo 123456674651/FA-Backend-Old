@@ -7,31 +7,99 @@ use App\Models\Aggriment;
 use App\Models\AgreementPartyVerification;
 use App\Models\Customer;
 use App\Services\AgreementOtpModeService;
+use App\Services\Auth\Msg91OtpService;
 use App\Services\PartyVerificationException;
 use App\Support\ApiResponse;
+use App\Support\MobileNumber;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Phone confirmation for the people named on an agreement.
- *
- * Confirmations are collected before the agreement is created — see
- * AgreementOtpModeService for why — and read back afterwards as a record of
- * who confirmed.
+ * Phone confirmation for the people named on an agreement / other parties.
  */
 class PartyVerificationController extends Controller
 {
-    public function __construct(private readonly AgreementOtpModeService $otpMode)
-    {
+    public function __construct(
+        private readonly AgreementOtpModeService $otpMode,
+        private readonly Msg91OtpService $otpService,
+    ) {
     }
 
     /**
-     * Records that a party or guarantor confirmed their number.
-     *
-     * Called once per person, before `create_aggriment`. The app runs the
-     * MSG91 OTP widget on the handset and posts the resulting access token
-     * here; the number inside that token is what gets recorded, not anything
-     * the client asserts.
+     * Sends OTP to a party / user mobile number using MSG91 Template API.
+     */
+    public function sendOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'mobile' => 'required|string',
+            'template_id' => 'nullable|string',
+        ]);
+
+        $mobile = MobileNumber::toStored($request->input('mobile'));
+
+        if (strlen($mobile) !== 10) {
+            return ApiResponse::error(
+                422,
+                'PHONE_UNSUPPORTED',
+                'Please provide a valid 10-digit mobile number.',
+            );
+        }
+
+        $result = $this->otpService->sendOtp($mobile, $request->input('template_id'));
+
+        if (!$result['status']) {
+            return ApiResponse::error(400, 'OTP_SEND_FAILED', $result['message']);
+        }
+
+        return ApiResponse::ok([
+            'mobile' => $mobile,
+        ], $result['message']);
+    }
+
+    /**
+     * Verifies the party OTP and records verification for agreement creation.
+     */
+    public function verifyOtp(Request $request): JsonResponse
+    {
+        $request->validate([
+            'mobile' => 'required|string',
+            'otp' => 'required|string',
+        ]);
+
+        $mobile = MobileNumber::toStored($request->input('mobile'));
+
+        if (strlen($mobile) !== 10) {
+            return ApiResponse::error(
+                422,
+                'PHONE_UNSUPPORTED',
+                'Please provide a valid 10-digit mobile number.',
+            );
+        }
+
+        $result = $this->otpService->verifyOtp($mobile, $request->input('otp'));
+
+        if (!$result['status']) {
+            return ApiResponse::error(422, 'INVALID_OTP', $result['message']);
+        }
+
+        try {
+            $record = $this->otpMode->recordDirectPhoneVerification(
+                (int) $request->user()->id,
+                $mobile,
+            );
+        } catch (PartyVerificationException $e) {
+            return $e->toResponse();
+        }
+
+        return ApiResponse::ok([
+            'mobile' => $record['mobile'],
+            'verified_at' => $record['verified_at']->toIso8601String(),
+            'valid_for_minutes' => AgreementOtpModeService::VERIFICATION_TTL_MINUTES,
+        ], 'Party phone verified successfully.');
+    }
+
+    /**
+     * Records that a party or guarantor confirmed their number via widget access_token.
      */
     public function verifyPhone(Request $request): JsonResponse
     {

@@ -14,6 +14,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (!Schema::hasTable('agreements')) {
+            return;
+        }
+
         Schema::table('agreements', function (Blueprint $table) {
             $table->index('created_at', 'agreements_created_at_index');
             $table->index('category_id', 'agreements_category_id_index');
@@ -24,6 +28,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (!Schema::hasTable('agreements')) {
+            return;
+        }
+
         Schema::table('agreements', function (Blueprint $table) {
             $table->dropIndex('agreements_created_at_index');
             $table->dropIndex('agreements_category_id_index');

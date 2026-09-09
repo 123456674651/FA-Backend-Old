@@ -45,7 +45,6 @@ return new class extends Migration
             $table->index(['customer_id', 'status']);
 
             $table->foreign('customer_id')->references('id')->on('customers')->cascadeOnDelete();
-            $table->foreign('subscription_plan_id')->references('id')->on('subscription_plans');
         });
     }
 

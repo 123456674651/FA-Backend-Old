@@ -14,19 +14,16 @@ class UpdateUserRequest extends FormRequest
 
     public function rules(): array
     {
-        $userId = $this->route('user') ?? $this->route('id');
+        $adminId = $this->route('user') ?? $this->route('id');
 
         return [
             'name' => 'required|string|max:255',
             'email' => [
                 'required',
                 'email',
-                Rule::unique('users', 'email')->ignore($userId),
+                Rule::unique('admins', 'email')->ignore($adminId),
             ],
-            'mobile' => [
-                'required',
-                Rule::unique('users', 'mobile')->ignore($userId),
-            ],
+            'role' => ['required', Rule::in(['SUPER_ADMIN', 'ADMIN'])],
             'password' => 'nullable|string|min:6|confirmed',
             'status' => 'nullable|boolean',
         ];

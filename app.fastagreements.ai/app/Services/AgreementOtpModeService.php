@@ -59,6 +59,43 @@ class AgreementOtpModeService
     // ---------------------------------------------------------------------
 
     /**
+     * Records a verification directly when the OTP was verified server-side (e.g. MSG91 Template API).
+     *
+     * @return array{mobile: string, verified_at: Carbon}
+     */
+    public function recordDirectPhoneVerification(int $customerId, string $mobile): array
+    {
+        $storedMobile = MobileNumber::toStored($mobile);
+
+        if (strlen($storedMobile) !== 10) {
+            throw new PartyVerificationException(
+                422,
+                'PHONE_UNSUPPORTED',
+                'The verified number is not a 10-digit mobile.',
+            );
+        }
+
+        $verifiedAt = Carbon::now();
+        $providerRef = 'direct_' . hash('sha256', $customerId . '_' . $storedMobile . '_' . microtime(true));
+
+        DB::table('used_phone_tokens')->insert([
+            'provider_ref' => $providerRef,
+            'used_at' => $verifiedAt,
+        ]);
+
+        PartyPhoneVerification::updateOrCreate(
+            ['customer_id' => $customerId, 'mobile' => $storedMobile],
+            [
+                'provider_ref' => $providerRef,
+                'firebase_uid' => null,
+                'verified_at' => $verifiedAt,
+            ],
+        );
+
+        return ['mobile' => $storedMobile, 'verified_at' => $verifiedAt];
+    }
+
+    /**
      * Records that a number was confirmed, from the token the provider's
      * verification produced.
      *

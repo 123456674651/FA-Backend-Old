@@ -36,9 +36,11 @@ return [
     */
 
     'guards' => [
+        // Session guard for the admin panel. Backed by the `admins` table,
+        // kept separate from the `users` table.
         'web' => [
             'driver' => 'session',
-            'provider' => 'users',
+            'provider' => 'admins',
         ],
 
         // Mobile customers. Stateless: the caller is identified by a signed
@@ -71,6 +73,13 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', App\Models\User::class),
+        ],
+
+        // Admin panel users. Kept in their own `admins` table, separate
+        // from the generic `users` table.
+        'admins' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Admin::class,
         ],
 
         // Customers live in their own table, separate from admin users.
@@ -107,6 +116,13 @@ return [
     'passwords' => [
         'users' => [
             'provider' => 'users',
+            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        'admins' => [
+            'provider' => 'admins',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
             'expire' => 60,
             'throttle' => 60,

@@ -38,7 +38,7 @@
 
         <div class="card">
           <div class="card-body profile-card pt-4 d-flex flex-column align-items-center">
-            <img src="{{ $user->profile_picture ? asset($user->profile_picture) : asset('assets/img/profile-img.jpg') }}" alt="Profile" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover; border: 2px solid #ddd;">
+            <img src="{{ $user->image ? asset($user->image) : asset('assets/img/profile-img.jpg') }}" alt="Profile" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover; border: 2px solid #ddd;">
             <h2 class="mt-3 text-dark">{{ $user->name }}</h2>
             <h3 class="text-muted">Administrator</h3>
           </div>
@@ -96,13 +96,13 @@
                   <label class="col-md-4 col-lg-3 col-form-label">Profile Image</label>
                   <div class="col-md-8 col-lg-9">
                     <div class="d-flex align-items-center gap-3">
-                      <img id="avatar-preview" src="{{ $user->profile_picture ? asset($user->profile_picture) : asset('assets/img/profile-img.jpg') }}" alt="Profile" class="rounded-circle" style="width: 90px; height: 90px; object-fit: cover; border: 1px solid #ccc;">
+                      <img id="avatar-preview" src="{{ $user->image ? asset($user->image) : asset('assets/img/profile-img.jpg') }}" alt="Profile" class="rounded-circle" style="width: 90px; height: 90px; object-fit: cover; border: 1px solid #ccc;">
                       <div class="d-flex flex-column gap-2">
                         <div class="d-flex gap-2">
                           <button type="button" class="btn btn-dark btn-sm fw-semibold" onclick="document.getElementById('profile_picture_input').click();">
                             <i class="bi bi-upload"></i> Upload
                           </button>
-                          @if($user->profile_picture)
+                          @if($user->image)
                             <button type="button" class="btn btn-outline-danger btn-sm fw-semibold" onclick="event.preventDefault(); document.getElementById('delete-avatar-form').submit();">
                               <i class="bi bi-trash"></i> Remove
                             </button>
@@ -119,7 +119,7 @@
                     </form>
 
                     <!-- Hidden delete form -->
-                    @if($user->profile_picture)
+                    @if($user->image)
                       <form action="{{ route('profile.image.delete') }}" method="POST" id="delete-avatar-form" class="d-none">
                         @csrf
                         @method('DELETE')

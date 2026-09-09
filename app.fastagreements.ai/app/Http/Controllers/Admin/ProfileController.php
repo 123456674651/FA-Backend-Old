@@ -28,7 +28,7 @@ class ProfileController extends Controller
 
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:admins,email,' . $user->id],
         ]);
 
         $user->update([
@@ -92,12 +92,12 @@ class ProfileController extends Controller
             $image->move($destinationPath, $fileName);
 
             // Delete old profile picture if exists
-            if ($user->profile_picture && file_exists(public_path($user->profile_picture))) {
-                @unlink(public_path($user->profile_picture));
+            if ($user->image && file_exists(public_path($user->image))) {
+                @unlink(public_path($user->image));
             }
 
             $user->update([
-                'profile_picture' => '/uploads/profile/' . $fileName,
+                'image' => '/uploads/profile/' . $fileName,
             ]);
         }
 
@@ -111,12 +111,12 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->profile_picture && file_exists(public_path($user->profile_picture))) {
-            @unlink(public_path($user->profile_picture));
+        if ($user->image && file_exists(public_path($user->image))) {
+            @unlink(public_path($user->image));
         }
 
         $user->update([
-            'profile_picture' => null,
+            'image' => null,
         ]);
 
         return redirect()->back()->with('success', 'Profile picture removed successfully.');

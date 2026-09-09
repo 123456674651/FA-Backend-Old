@@ -2,109 +2,81 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\api\AadharInfoController;
+use App\Http\Controllers\api\AdvocateApiController;
+use App\Http\Controllers\api\AgreementReportController;
 use App\Http\Controllers\api\AuthApiController;
+use App\Http\Controllers\api\CategoryWarningApiController;
+use App\Http\Controllers\api\CMSController;
 use App\Http\Controllers\api\CustomerController;
+use App\Http\Controllers\api\CustomerReportController;
 use App\Http\Controllers\api\DealCategoryController;
 use App\Http\Controllers\api\DealController;
 use App\Http\Controllers\api\FeedController;
 use App\Http\Controllers\api\InvoiceController;
 use App\Http\Controllers\api\LanguageController;
+use App\Http\Controllers\api\LegalController;
+use App\Http\Controllers\api\LegalNoticeController;
+use App\Http\Controllers\api\NotificationController;
 use App\Http\Controllers\api\PageController;
 use App\Http\Controllers\api\PartyVerificationController;
 use App\Http\Controllers\api\PaymentApiController;
 use App\Http\Controllers\api\PDFController;
 use App\Http\Controllers\api\PhpWordController;
+use App\Http\Controllers\api\PushNotificationApiController;
 use App\Http\Controllers\api\PurposeController;
 use App\Http\Controllers\api\RazorpayWebhookController;
 use App\Http\Controllers\api\SliderController;
 use App\Http\Controllers\api\SubscriptionApiController;
 use App\Http\Controllers\Admin\AttributeController;
+use App\Http\Controllers\Api\V2\AuthController as AuthControllerV2;
 use App\Http\Middleware\EnsureMinimumAppVersion;
 use App\Models\Sceme;
 use App\Support\ApiResponse;
 
 /*
 |--------------------------------------------------------------------------
-| Mobile API
-|--------------------------------------------------------------------------
-|
-| Three tiers:
-|
-|   public       – reference data drawn before anyone signs in
-|   auth.jwt     – a customer, identified by a Firebase-issued session token
-|   auth         – an admin, on the existing Blade session guard
-|
-| Nothing below reads a customer id out of a request body. Identity comes from
-| the token, and ownership is checked in the handler.
-|
-| Removed in the JWT cutover:
-|   GET  /clear             unauthenticated cache-clear and storage:link
-|   GET  /advocates         a hardcoded closure that shadowed the controller
-|   POST /verify_mobile     generated its own OTP and returned it in the body
-|   POST /verify_mobile_otp issued no session
-|   POST /customer_register  ) both replaced by /auth/firebase-exchange, which
-|   POST /registertion       ) provisions the account on first verified sign-in
-|
-*/
-
-/*
-|--------------------------------------------------------------------------
-| Public
+| 1. Public Routes (No Authentication Required)
 |--------------------------------------------------------------------------
 */
 
-// Sign-in. Public by necessity — the caller has no session yet.
+// Auth
 Route::post('auth/otp-exchange', [AuthApiController::class, 'otpExchange']);
-
-// Retired with the move off Firebase. Answers 410 rather than 404 so an old
-// build gets a clear reason; MIN_APP_VERSION is what actually moves people on.
-// Delete once telemetry shows no traffic.
-Route::post('auth/firebase-exchange', fn () => ApiResponse::error(
+Route::post('auth/firebase-exchange', fn() => ApiResponse::error(
     410,
     'ENDPOINT_RETIRED',
     'This app version is no longer supported. Please update to continue.',
 ));
-
 Route::get('auth/exists', [AuthApiController::class, 'exists']);
 
-// Catalogue and reference data. All read-only; the write halves live in the
-// admin group at the bottom of this file.
+// Auth (v2 - MSG91 mobile OTP)
+Route::post('v2/login', [AuthControllerV2::class, 'login']);
+Route::post('v2/verified-otp', [AuthControllerV2::class, 'verifiedOtp']);
+Route::post('v2/register', [AuthControllerV2::class, 'register']);
+
+// Master & Reference Data
 Route::get('/deal_categories', [DealCategoryController::class, 'index'])->name('api.dealCategories.index');
 Route::get('/deal_categories/show/{deal_category}', [DealCategoryController::class, 'show'])->name('api.dealCategories.show');
 Route::post('attribute/list', [AttributeController::class, 'list'])->name('api.attribute.list');
-
-// Razorpay's server-to-server callback. Deliberately unauthenticated: the
-// gateway carries no token, and the HMAC over the raw body is the auth.
-// Exempt from the app-version gate — Razorpay never sends X-App-Version, so
-// the gate would 426 every delivery once MIN_APP_VERSION is set. Throttled
-// since this is an otherwise-public POST that hits the database and log.
-Route::post('webhooks/razorpay', [RazorpayWebhookController::class, 'handle'])
-    ->withoutMiddleware(EnsureMinimumAppVersion::class)
-    ->middleware('throttle:60,1');
-
 Route::get('/languages', [LanguageController::class, 'index'])->name('api.languages.index');
 Route::get('/purposes', [PurposeController::class, 'index'])->name('api.purposes.index');
 Route::get('/purposes/show/{purpose}', [PurposeController::class, 'show'])->name('api.purposes.show');
+Route::get('/category-warnings', [CategoryWarningApiController::class, 'index']);
+Route::get('subscription-plans', [SubscriptionApiController::class, 'subscription_plane_list']);
+Route::get('/advocates', [AdvocateApiController::class, 'index']);
+Route::get('/advocates/{id}', [AdvocateApiController::class, 'show']);
 
+// Pages & CMS
 Route::get('/pages', [PageController::class, 'index'])->name('api.pages.index');
 Route::get('/pages/show/{page}', [PageController::class, 'show'])->name('api.pages.show');
 Route::get('/pages_legal', [PageController::class, 'indexlegal'])->name('api.pages.indexlegal');
-Route::get('legal/{legal}', [\App\Http\Controllers\api\LegalController::class, 'index']);
-
-Route::get('/cms-pages', [\App\Http\Controllers\api\CMSController::class, 'index'])->name('api.cms-pages.index');
-Route::get('/cms-pages/{slug}', [\App\Http\Controllers\api\CMSController::class, 'show'])->name('api.cms-pages.show');
-
+Route::get('legal/{legal}', [LegalController::class, 'index']);
+Route::get('/cms-pages', [CMSController::class, 'index'])->name('api.cms-pages.index');
+Route::get('/cms-pages/{slug}', [CMSController::class, 'show'])->name('api.cms-pages.show');
 Route::get('sliders', [SliderController::class, 'index'])->name('api.sliders.index');
 Route::get('sliders/{id}', [SliderController::class, 'show'])->name('api.sliders.show');
 
-Route::get('/category-warnings', [\App\Http\Controllers\api\CategoryWarningApiController::class, 'index']);
-Route::get('subscription-plans', [SubscriptionApiController::class, 'subscription_plane_list']);
-
-// Now served from the advocates table. The hardcoded closure that used to sit
-// above this line shadowed it, so admin-managed advocates never appeared.
-Route::get('/advocates', [\App\Http\Controllers\api\AdvocateApiController::class, 'index']);
-Route::get('/advocates/{id}', [\App\Http\Controllers\Api\AdvocateApiController::class, 'show']);
-
+// Utilities
+Route::get('scemelist', fn() => Sceme::select('id', 'emi_pay_method')->get());
 Route::get('/forms', function () {
     return response()->json([
         'status' => true,
@@ -129,47 +101,37 @@ Route::get('/forms', function () {
     ]);
 });
 
-Route::get('scemelist', function () {
-    return Sceme::select('id', 'emi_pay_method')->get();
-});
+// Webhooks
+Route::post('webhooks/razorpay', [RazorpayWebhookController::class, 'handle'])
+    ->withoutMiddleware(EnsureMinimumAppVersion::class)
+    ->middleware('throttle:60,1');
+
 
 /*
 |--------------------------------------------------------------------------
-| Customer — requires a session token
+| 2. Customer Routes (Requires JWT Authentication: auth.jwt)
 |--------------------------------------------------------------------------
 */
 
+/* Login */
+Route::get('get_customer_by_mobile', [CustomerController::class, 'getCustomerByMobile']);
+
 Route::middleware('auth.jwt')->group(function () {
 
-    // Account
+    // User Profile
     Route::get('auth/me', [AuthApiController::class, 'me']);
     Route::match(['put', 'patch'], 'auth/profile', [AuthApiController::class, 'updateProfile']);
-    // The caller's own profile page, subscription and invoices. Same payload as
-    // the admin `customers/show/{customer}`, but scoped to the token holder —
-    // the app needs this about itself and must not go through the admin route.
     Route::get('profile', [CustomerController::class, 'showSelf']);
     Route::patch('/customers/allow-prompt', [CustomerController::class, 'updateAllowPrompt']);
-    Route::get('get_customer_by_mobile', [CustomerController::class, 'getCustomerByMobile']);
+
     Route::post('upload_image', [CustomerController::class, 'upload_image']);
 
-    /*
-     * Phone confirmation for parties and guarantors.
-     *
-     * Collected before the agreement is created: create_aggriment builds the
-     * row and renders the document in one call, so there is no window in which
-     * an existing agreement could sit waiting on confirmations.
-     */
     Route::post('party-verifications/msg91', [PartyVerificationController::class, 'verifyPhone']);
     Route::post('party-verifications/pending', [PartyVerificationController::class, 'pendingForCreation']);
-    Route::get('agreements/{agreement}/verifications', [PartyVerificationController::class, 'forAgreement'])
-        ->whereNumber('agreement');
+    Route::get('agreements/{agreement}/verifications', [PartyVerificationController::class, 'forAgreement'])->whereNumber('agreement');
 
-    // Agreements
+    // Agreements & Deals
     Route::post('/create_aggriment/v1', [PhpWordController::class, 'create_aggriment']);
-    // Content edits to an existing agreement, re-rendering the document.
-    // POST, not PATCH: PHP populates no $_FILES for a PATCH body, and an edit
-    // may re-upload party, Aadhaar or vehicle images. Parties, category and
-    // language are fixed at creation — the handler refuses to change them.
     Route::post('/update_aggriment/v1', [PhpWordController::class, 'update_aggriment']);
     Route::post('/convert_Word_to_pdf/v1', [PhpWordController::class, 'convertWordToPdf']);
     Route::post('create_aggriment', [PDFController::class, 'create_aggriment']);
@@ -181,36 +143,29 @@ Route::middleware('auth.jwt')->group(function () {
     Route::get('/deal_history/{id}', [DealController::class, 'showDealHistory']);
     Route::get('party-wise-agreements/{id}', [DealController::class, 'partyWiseAggrimentsApi'])->whereNumber('id');
 
-    // Generated documents. The filename is sanitised in the controller — the
-    // route pattern still allows slashes, so the guard lives there.
+    // PDF Documents
     Route::get('/pdf/preview/{file}', [PhpWordController::class, 'preview'])->where('file', '.*')->name('pdf.preview');
     Route::get('/pdf/download/{file}', [PhpWordController::class, 'download'])->where('file', '.*')->name('pdf.download');
 
-    // KYC
+    // KYC & Aadhaar
     Route::post('/aadhar_info', [AadharInfoController::class, 'store']);
     Route::get('/aadhar_info/{id}', [AadharInfoController::class, 'show']);
     Route::post('/aadhar_info/{id}', [AadharInfoController::class, 'update']);
     Route::delete('/aadhar_info/{id}', [AadharInfoController::class, 'destroy']);
 
-    // Money
+    // Subscriptions & Payments
     Route::get('subscription/status/{customer_id}', [SubscriptionApiController::class, 'status']);
     Route::post('payment/order', [PaymentApiController::class, 'createOrder']);
     Route::post('payment/verify', [PaymentApiController::class, 'verify']);
-    // `subscription/renew` was removed here. It activated a plan and wrote a
-    // paid invoice on the client's say-so — no order, no signature, nothing
-    // tying it to a payment — so any caller could grant themselves any plan
-    // for free. Purchases now go through payment/order + payment/verify above.
     Route::get('subscription-invoices/pdf-url/{id}', [InvoiceController::class, 'getInvoicePdfUrl']);
     Route::get('subscription-invoices/view/{id}', [InvoiceController::class, 'viewPdf']);
     Route::get('subscription-invoices/download/{id}', [InvoiceController::class, 'downloadPdf']);
 
-    // Feed
+    // Feeds & Community
     Route::get('/feed', [FeedController::class, 'index']);
-    // Opt-in share, called from the post-payment prompt. Agreement creation
-    // does not post to the feed on its own.
-    Route::post('/feed/publish', [FeedController::class, 'publish']);
     Route::post('/feed', [FeedController::class, 'store']);
     Route::put('/feed', [FeedController::class, 'update']);
+    Route::post('/feed/publish', [FeedController::class, 'publish']);
     Route::delete('/feed/delete/{feed}', [FeedController::class, 'destroy']);
     Route::post('/feed/toggle_like', [FeedController::class, 'toggle_like']);
     Route::post('/feed/comment', [FeedController::class, 'addComment']);
@@ -226,39 +181,39 @@ Route::middleware('auth.jwt')->group(function () {
     Route::put('/feed/report/status', [FeedController::class, 'updateFeedReportStatus']);
     Route::delete('/feed/report/delete/{id}', [FeedController::class, 'deleteFeedReport']);
 
-    // Notifications and legal notices
-    Route::get('/notifications', [\App\Http\Controllers\api\NotificationController::class, 'index'])->name('api.notifications.index');
-    Route::patch('/legal-notices/{id}/status', [\App\Http\Controllers\api\LegalNoticeController::class, 'updateStatus'])->name('api.legal-notices.status');
-    Route::apiResource('/legal-notices', \App\Http\Controllers\api\LegalNoticeController::class)->names([
+    // Notifications & Legal Notices
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('api.notifications.index');
+    Route::patch('/legal-notices/{id}/status', [LegalNoticeController::class, 'updateStatus'])->name('api.legal-notices.status');
+    Route::apiResource('/legal-notices', LegalNoticeController::class)->names([
         'index' => 'api.legal-notices.index',
         'store' => 'api.legal-notices.store',
         'show' => 'api.legal-notices.show',
         'update' => 'api.legal-notices.update',
         'destroy' => 'api.legal-notices.destroy',
     ]);
+
+    // Common Users Mobile No. Verification
+    Route::post('party-verifications/send-otp', [PartyVerificationController::class, 'sendOtp']);
+    Route::post('party-verifications/verify-otp', [PartyVerificationController::class, 'verifyOtp']);
 });
+
 
 /*
 |--------------------------------------------------------------------------
-| Admin — existing Blade session guard
+| 3. Admin Routes (Requires Admin Session Authentication: auth)
 |--------------------------------------------------------------------------
-|
-| These were reachable by anyone before. They are back-office operations, so
-| they reuse the session the admin panel already establishes rather than
-| growing a second permission system on the API side.
-|
 */
 
 Route::middleware('auth')->group(function () {
 
-    // Customer administration. Self-service lives on /auth/profile.
+    // Customers Administration
     Route::get('/customers', [CustomerController::class, 'index'])->name('api.customers.index');
     Route::post('/customers/create', [CustomerController::class, 'store'])->name('api.customers.store');
     Route::get('/customers/show/{customer}', [CustomerController::class, 'show'])->name('api.customers.show');
     Route::post('/customers/update/{customer}', [CustomerController::class, 'update'])->name('api.customers.update');
     Route::delete('/customers/delete/{customer}', [CustomerController::class, 'destroy'])->name('api.customers.destroy');
 
-    // Catalogue writes
+    // Catalogue Management
     Route::post('/deal_categories/create', [DealCategoryController::class, 'store'])->name('api.dealCategories.store');
     Route::post('/deal_categories/update/{deal_category}', [DealCategoryController::class, 'update'])->name('api.dealCategories.update');
     Route::delete('/deal_categories/delete/{deal_category}', [DealCategoryController::class, 'destroy'])->name('api.dealCategories.destroy');
@@ -276,39 +231,19 @@ Route::middleware('auth')->group(function () {
     Route::post('sliders/update/{id}', [SliderController::class, 'update'])->name('api.sliders.update');
     Route::delete('sliders/{id}', [SliderController::class, 'destroy'])->name('api.sliders.destroy');
 
-    // Reporting
-    Route::get('/customer-reports', [\App\Http\Controllers\Api\CustomerReportController::class, 'index']);
-    Route::get('/admin/agreement-reports', [\App\Http\Controllers\Api\AgreementReportController::class, 'index']);
+    // Reports
+    Route::get('/customer-reports', [CustomerReportController::class, 'index']);
+    Route::get('/admin/agreement-reports', [AgreementReportController::class, 'index']);
 
-    // Push notifications
+    // Admin Push Notifications
     Route::prefix('admin/notifications')->group(function () {
-        Route::get('templates', [\App\Http\Controllers\Api\PushNotificationApiController::class, 'listTemplates']);
-        Route::post('templates', [\App\Http\Controllers\Api\PushNotificationApiController::class, 'storeTemplate']);
-        Route::get('templates/{id}', [\App\Http\Controllers\Api\PushNotificationApiController::class, 'showTemplate']);
-        Route::put('templates/{id}', [\App\Http\Controllers\Api\PushNotificationApiController::class, 'updateTemplate']);
-        Route::delete('templates/{id}', [\App\Http\Controllers\Api\PushNotificationApiController::class, 'destroyTemplate']);
-        Route::post('send', [\App\Http\Controllers\Api\PushNotificationApiController::class, 'sendNotification']);
-        Route::get('history', [\App\Http\Controllers\Api\PushNotificationApiController::class, 'listHistory']);
-        Route::get('history/{id}', [\App\Http\Controllers\Api\PushNotificationApiController::class, 'showHistory']);
+        Route::get('templates', [PushNotificationApiController::class, 'listTemplates']);
+        Route::post('templates', [PushNotificationApiController::class, 'storeTemplate']);
+        Route::get('templates/{id}', [PushNotificationApiController::class, 'showTemplate']);
+        Route::put('templates/{id}', [PushNotificationApiController::class, 'updateTemplate']);
+        Route::delete('templates/{id}', [PushNotificationApiController::class, 'destroyTemplate']);
+        Route::post('send', [PushNotificationApiController::class, 'sendNotification']);
+        Route::get('history', [PushNotificationApiController::class, 'listHistory']);
+        Route::get('history/{id}', [PushNotificationApiController::class, 'showHistory']);
     });
 });
-
-/*
-| Email templates were routed to App\Http\Controllers\Api\EmailTemplateApiController,
-| which has never existed in this repository. All nine routes returned 500, and
-| their presence made `php artisan route:list` and `route:cache` fail outright —
-| so route caching could not be enabled at all. Left here, commented, in case
-| the controller turns up; delete this block if the feature was abandoned.
-|
-| Route::prefix('admin/emails')->group(function () {
-|     Route::get('templates', [EmailTemplateApiController::class, 'listTemplates']);
-|     Route::post('templates', [EmailTemplateApiController::class, 'storeTemplate']);
-|     Route::get('templates/{id}', [EmailTemplateApiController::class, 'showTemplate']);
-|     Route::put('templates/{id}', [EmailTemplateApiController::class, 'updateTemplate']);
-|     Route::delete('templates/{id}', [EmailTemplateApiController::class, 'destroyTemplate']);
-|     Route::post('templates/{id}/test', [EmailTemplateApiController::class, 'testSendTemplate']);
-|     Route::get('logs', [EmailTemplateApiController::class, 'listLogs']);
-|     Route::get('logs/{id}', [EmailTemplateApiController::class, 'showLog']);
-|     Route::post('logs/{id}/resend', [EmailTemplateApiController::class, 'resendLog']);
-| });
-*/

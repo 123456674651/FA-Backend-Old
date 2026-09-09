@@ -20,12 +20,12 @@
             <div class="card-body p-4">
                 <div class="row">
                     <div class="col-md-3 text-center">
-                        <img src="{{ $user->profile_picture ? asset($user->profile_picture) : asset('assets/img/logo/logo.jpeg') }}" class="img-thumbnail rounded" style="max-height:150px; object-fit:cover;">
+                        <img src="{{ $user->image ? asset($user->image) : asset('assets/img/logo/logo.jpeg') }}" class="img-thumbnail rounded" style="max-height:150px; object-fit:cover;">
                     </div>
                     <div class="col-md-9">
                         <h4>{{ $user->name }}</h4>
                         <p><strong>Email:</strong> {{ $user->email }}</p>
-                        <p><strong>Mobile:</strong> {{ $user->mobile ?? 'N/A' }}</p>
+                        <p><strong>Role:</strong> {{ $user->role === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin' }}</p>
                         <p><strong>Status:</strong> {!! $user->status ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-danger">Inactive</span>' !!}</p>
                         <p><strong>Created:</strong> {{ $user->created_at }}</p>
                     </div>

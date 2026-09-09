@@ -50,4 +50,14 @@ return [
         ],
     ],
 
+    // Used by Api\V2\AuthController's mobile OTP login/verify.
+    // When `template_id` is set, OTPs go through MSG91's plain Template API.
+    // Until then (template not yet DLT-approved), it falls back to the
+    // Widget API using `widget_id`.
+    'msg91' => [
+        'auth_key' => env('MSG91_AUTH_KEY'),
+        'template_id' => env('MSG91_OTP_TEMPLATE_ID'),
+        'widget_id' => env('MSG91_WIDGET_ID'),
+    ],
+
 ];

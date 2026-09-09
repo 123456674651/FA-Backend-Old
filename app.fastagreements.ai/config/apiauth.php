@@ -52,6 +52,7 @@ return [
     */
     'msg91' => [
         'auth_key' => env('MSG91_AUTH_KEY'),
+        'otp_template_id' => env('MSG91_OTP_TEMPLATE_ID'),
         'verify_url' => env(
             'MSG91_VERIFY_URL',
             'https://control.msg91.com/api/v5/widget/verifyAccessToken'

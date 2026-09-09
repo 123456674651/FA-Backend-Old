@@ -113,19 +113,19 @@ class CustomerController extends Controller
 
     public function registertion(Request $request)
     {
-         $validator = Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:120',
             'mobile' => 'required|numeric|min:11|unique:customers',
             'email' => 'email|unique:customers',
             'address' => 'required|regex:/(^[-0-9A-Za-z.,\/ ]+$)/',
             'is_company' => 'required|boolean',
         ])->sometimes(
-            ['company_name', 'gst_number'],
-            'required|string|max:255',
-            function ($input) {
-                return $input->is_company == 1;
-            }
-        );
+                ['company_name', 'gst_number'],
+                'required|string|max:255',
+                function ($input) {
+                    return $input->is_company == 1;
+                }
+            );
 
         if ($validator->fails()) {
             return response()->json([
@@ -134,7 +134,7 @@ class CustomerController extends Controller
                 'error' => $validator->errors()
             ]);
         }
- 
+
 
         $customer = new Customer();
         $customer->name = $request->name;
@@ -150,21 +150,21 @@ class CustomerController extends Controller
         $customer->gender = $request->gender;
         $photoPath = null;
 
-  if ($request->hasFile('photo')) {
-        $file = $request->file('photo');
-        $filename = 'customer_' . uniqid() . '.' . $file->getClientOriginalExtension();
-        $destinationPath = public_path('uploads/customers');
-        $file->move($destinationPath, $filename);
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $filename = 'customer_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $destinationPath = public_path('uploads/customers');
+            $file->move($destinationPath, $filename);
 
-        // Save path in DB (optional: prepend 'uploads/customers/' to make it accessible via URL)
-        $customer->photo = 'uploads/customers/' . $filename;
-    }
-    $customer->save();
-      
-      
-      Feed::create([
-            'type'=> 'customer_joined',
-            'customer_id'=> $customer->id,
+            // Save path in DB (optional: prepend 'uploads/customers/' to make it accessible via URL)
+            $customer->photo = 'uploads/customers/' . $filename;
+        }
+        $customer->save();
+
+
+        Feed::create([
+            'type' => 'customer_joined',
+            'customer_id' => $customer->id,
         ]);
 
         return response()->json([
@@ -176,58 +176,58 @@ class CustomerController extends Controller
 
     public function updateCustomer(Request $request, $id)
     {
-       
-       $customer = Customer::find($id);
 
-    if (!$customer) {
+        $customer = Customer::find($id);
+
+        if (!$customer) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Customer not found'
+            ]);
+        }
+
+        $customer->name = $request->name;
+        $customer->mobile = $request->mobile;
+        $customer->email = $request->email;
+        $customer->address = $request->address;
+        $customer->company_name = $request->company_name ?? null;
+        $customer->gst_number = $request->gst_number ?? null;
+        $customer->is_company = $request->is_company;
+        $customer->occupation = $request->occupation;
+        $customer->date_of_birth = $request->date_of_birth;
+        $customer->gender = $request->gender;
+
+        if ($request->hasFile('photo')) {
+
+            // ensure directory exists
+            $destinationPath = public_path('uploads/customers');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
+
+            // delete old photo (if exists)
+            if ($customer->photo && file_exists(public_path($customer->photo))) {
+                unlink(public_path($customer->photo));
+            }
+
+            $file = $request->file('photo');
+            $filename = 'customer_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $file->move($destinationPath, $filename);
+
+            $customer->photo = 'uploads/customers/' . $filename;
+        }
+
+        $customer->save();
+
         return response()->json([
-            'status' => false,
-            'message' => 'Customer not found'
+            'status' => true,
+            'message' => 'Customer updated successfully',
+            'data' => $customer
         ]);
     }
 
-    $customer->name = $request->name;
-    $customer->mobile = $request->mobile;
-    $customer->email = $request->email;
-    $customer->address = $request->address;
-    $customer->company_name = $request->company_name ?? null;
-    $customer->gst_number = $request->gst_number ?? null;
-    $customer->is_company = $request->is_company;
-    $customer->occupation = $request->occupation;
-    $customer->date_of_birth = $request->date_of_birth;
-    $customer->gender = $request->gender;
 
-    if ($request->hasFile('photo')) {
-
-        // ensure directory exists
-        $destinationPath = public_path('uploads/customers');
-        if (!file_exists($destinationPath)) {
-            mkdir($destinationPath, 0755, true);
-        }
-
-        // delete old photo (if exists)
-        if ($customer->photo && file_exists(public_path($customer->photo))) {
-            unlink(public_path($customer->photo));
-        }
-
-        $file = $request->file('photo');
-        $filename = 'customer_' . uniqid() . '.' . $file->getClientOriginalExtension();
-        $file->move($destinationPath, $filename);
-
-        $customer->photo = 'uploads/customers/' . $filename;
-    }
-
-    $customer->save();
-
-    return response()->json([
-        'status' => true,
-        'message' => 'Customer updated successfully',
-        'data' => $customer
-    ]);
-    }
-
-
- public function store(Request $request)
+    public function store(Request $request)
     {
         // Validate the incoming request
         $validator = Validator::make($request->all(), [
@@ -281,7 +281,7 @@ class CustomerController extends Controller
 
             $personImage = $request->hasFile('person_image')
                 ? $this->image_resize($request->file('person_image'), 'person_images')
-                :  'default.webp';
+                : 'default.webp';
 
 
             $upiImage = $request->hasFile('upi_image')
@@ -333,16 +333,16 @@ class CustomerController extends Controller
                 'status' => true,
                 'message' => 'Customer Created Successfully',
                 'data' => [
-                   'id' => $customer->id,
-                        'name' => $customer->name,
-                        'mobile' => $customer->mobile,
-                        'email' => $customer->email,
-                        'address' => $customer->address,
-                        'signature' => $customer->signature,
-                        'gender' => $customer->gender,
-                        'occupation' => $customer->occupation,
-                        'date_of_birth' => $customer->date_of_birth,
-                        'person_image' => $customer->person_image_url,
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'mobile' => $customer->mobile,
+                    'email' => $customer->email,
+                    'address' => $customer->address,
+                    'signature' => $customer->signature,
+                    'gender' => $customer->gender,
+                    'occupation' => $customer->occupation,
+                    'date_of_birth' => $customer->date_of_birth,
+                    'person_image' => $customer->person_image_url,
 
                 ]
             ], 201); // 201 Created
@@ -377,7 +377,7 @@ class CustomerController extends Controller
 
     public function show(string $id)
     {
-                $subscriptionStatus = $this->status($id);
+        $subscriptionStatus = $this->status($id);
         try {
             // Attempt to find the customer by ID
             $customer = Customer::findOrFail($id);
@@ -392,33 +392,33 @@ class CustomerController extends Controller
             $permanentState = $customer->per_state_id ? State::find($customer->per_state_id) : null;
             $permanentCountry = $customer->per_country_id ? Country::find($customer->per_country_id) : null;
             $customer_invoice = SubscriptionInvoice::with('agreement.party2')->where('customer_id', $id)->get();
-          
+
             // Prepare the response data
             $response = [
                 'status' => true,
                 'message' => 'Profile Page Successfully',
-                 'data' => [
-                      'id'             => $customer->id,
-                      'name'           => $customer->name,
-                      'mobile'         => $customer->mobile,
-                      'email'          => $customer->email,
-                      'address'        => $customer->address,
-                      'company_name'   => $customer->company_name,
-                      'gst_number'     => $customer->gst_number,
-                      'location'       => $customer->location,
-                      'signature'      => $customer->signature,
-                      'occupation'     => $customer->occupation,
-                      'date_of_birth'  => $customer->date_of_birth,
-                      'gender'         => $customer->gender,
-                      'photo_url'          => $customer->photo ? asset($customer->photo) : null,
-                      'created_at' => $customer->created_at,
-                      'updated_at' => $customer->updated_at,
-                      'activeSubscription' => $customer->activeSubscription,
-                      'subscription_status' => $subscriptionStatus,
-                      'customer_invoice' => $customer_invoice,
-                      'allow_prompt' => $customer->allow_prompt,
-                   
-                  ]
+                'data' => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'mobile' => $customer->mobile,
+                    'email' => $customer->email,
+                    'address' => $customer->address,
+                    'company_name' => $customer->company_name,
+                    'gst_number' => $customer->gst_number,
+                    'location' => $customer->location,
+                    'signature' => $customer->signature,
+                    'occupation' => $customer->occupation,
+                    'date_of_birth' => $customer->date_of_birth,
+                    'gender' => $customer->gender,
+                    'photo_url' => $customer->photo ? asset($customer->photo) : null,
+                    'created_at' => $customer->created_at,
+                    'updated_at' => $customer->updated_at,
+                    'activeSubscription' => $customer->activeSubscription,
+                    'subscription_status' => $subscriptionStatus,
+                    'customer_invoice' => $customer_invoice,
+                    'allow_prompt' => $customer->allow_prompt,
+
+                ]
             ];
 
             // Return a JSON response with the customer data and related details
@@ -449,7 +449,7 @@ class CustomerController extends Controller
     public function update(Request $request, $id)
     {
         // Validate the incoming request
-      
+
         try {
             // Fetch the existing customer record
             $customer = Customer::findOrFail($id);
@@ -512,17 +512,17 @@ class CustomerController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Customer Updated Successfully',
-                 'data' => [
-                         'id' => $customer->id,
-                        'name' => $customer->name,
-                        'mobile' => $customer->mobile,
-                        'email' => $customer->email,
-                        'address' => $customer->address,
-                        'signature' => $customer->signature,
-                        'gender' => $customer->gender,
-                        'occupation' => $customer->occupation,
-                        'date_of_birth' => $customer->date_of_birth,
-                        'person_image' => $customer->person_image_url,
+                'data' => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'mobile' => $customer->mobile,
+                    'email' => $customer->email,
+                    'address' => $customer->address,
+                    'signature' => $customer->signature,
+                    'gender' => $customer->gender,
+                    'occupation' => $customer->occupation,
+                    'date_of_birth' => $customer->date_of_birth,
+                    'person_image' => $customer->person_image_url,
 
                 ]
             ], 200); // 200 OK
@@ -582,11 +582,9 @@ class CustomerController extends Controller
         $user_id = $request->user()->id;
         $mobile = $request->mobile_number;
         $customer = Customer::where('mobile', $mobile)->first();
-         $firebaseToken = $request->fcm_token;
+        $firebaseToken = $request->fcm_token;
 
-        
-           if (!$customer) {
-
+        if (!$customer) {
             return response()->json([
                 'status' => false,
                 'message' => 'This mobile number is not registered',
@@ -595,50 +593,49 @@ class CustomerController extends Controller
 
 
         if ($customer->id == $user_id) {
-
             return response()->json([
                 'status' => false,
                 'message' => 'Same User not allowed',
             ]);
         }
-      
-       // Check if customer account is suspended
+
+        // Check if customer account is suspended
         if ($customer->is_active == 0) {
             return response()->json([
                 'status' => false,
                 'message' => 'Your account has been suspended by the administrator. Please contact support.',
             ]);
         }
-      
+
         // Update Firebase Token
-    if (!empty($firebaseToken)) {
-        $customer->update([
-            'fcm_token' => $firebaseToken
-        ]);
-    }
+        if (!empty($firebaseToken)) {
+            $customer->update([
+                'fcm_token' => $firebaseToken
+            ]);
+        }
 
         if ($customer) {
             return response()->json([
                 'status' => true,
                 'message' => 'Customer found',
-                 'data' => [
-                      'id'             => $customer->id,
-                      'name'           => $customer->name,
-                      'mobile'         => $customer->mobile,
-                      'email'          => $customer->email,
-                      'address'        => $customer->address,
-                      'company_name'   => $customer->company_name,
-                      'gst_number'     => $customer->gst_number,
-                      'location'       => $customer->location,
-                      'signature'      => $customer->signature,
-                      'occupation'     => $customer->occupation,
-                      'date_of_birth'  => $customer->date_of_birth,
-                      'gender'         => $customer->gender,
-                      'photo_url'          => $customer->photo ? asset($customer->photo) : null,
-                      'created_at' => $customer->created_at,
-                      'updated_at' => $customer->updated_at,
-                   
-                  ]
+                'data' => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'mobile' => $customer->mobile,
+                    'email' => $customer->email,
+                    'address' => $customer->address,
+                    'company_name' => $customer->company_name,
+                    'gst_number' => $customer->gst_number,
+                    'location' => $customer->location,
+                    'signature' => $customer->signature,
+                    'occupation' => $customer->occupation,
+                    'date_of_birth' => $customer->date_of_birth,
+                    'gender' => $customer->gender,
+                    'photo_url' => $customer->photo ? asset($customer->photo) : null,
+                    'created_at' => $customer->created_at,
+                    'updated_at' => $customer->updated_at,
+
+                ]
 
             ]);
         }
@@ -650,50 +647,50 @@ class CustomerController extends Controller
     }
 
     public function upload_image(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'customer_id' => 'required|exists:customers,id',
-        'photo' => 'required|image|mimes:jpeg,jpg,png,webp|max:2048',
-    ]);
+    {
+        $validator = Validator::make($request->all(), [
+            'customer_id' => 'required|exists:customers,id',
+            'photo' => 'required|image|mimes:jpeg,jpg,png,webp|max:2048',
+        ]);
 
-    if ($validator->fails()) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Validation Error',
-            'errors' => $validator->errors()
-        ], 400);
-    }
-
-    $customer = Customer::findOrFail($request->customer_id);
-
-    if ($request->hasFile('photo')) {
-        $file = $request->file('photo');
-        $filename = 'customer_' . uniqid() . '.' . $file->getClientOriginalExtension();
-
-        $destinationPath = public_path('uploads/customers');
-
-        // Create folder if it doesn't exist
-        if (!file_exists($destinationPath)) {
-            mkdir($destinationPath, 0775, true);
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validation Error',
+                'errors' => $validator->errors()
+            ], 400);
         }
 
-        $file->move($destinationPath, $filename);
+        $customer = Customer::findOrFail($request->customer_id);
 
-        // Save relative path
-        $customer->photo = 'uploads/customers/' . $filename;
+        if ($request->hasFile('photo')) {
+            $file = $request->file('photo');
+            $filename = 'customer_' . uniqid() . '.' . $file->getClientOriginalExtension();
+
+            $destinationPath = public_path('uploads/customers');
+
+            // Create folder if it doesn't exist
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0775, true);
+            }
+
+            $file->move($destinationPath, $filename);
+
+            // Save relative path
+            $customer->photo = 'uploads/customers/' . $filename;
+        }
+
+        $customer->save();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Customer Updated Successfully',
+            'data' => $customer
+        ], 200);
     }
 
-    $customer->save();
 
-    return response()->json([
-        'status' => true,
-        'message' => 'Customer Updated Successfully',
-        'data' => $customer
-    ], 200);
-}
-  
-  
- public function status($customer_id)
+    public function status($customer_id)
     {
         $today = Carbon::today();
 
@@ -703,11 +700,11 @@ class CustomerController extends Controller
             ->orderBy('end_date', 'desc')
             ->first();
 
-   /* ===============================
-       CASE 1: NO SUBSCRIPTION FOUND
-    ================================ */
-    if (!$subscription) {
-       return response()->json([
+        /* ===============================
+            CASE 1: NO SUBSCRIPTION FOUND
+         ================================ */
+        if (!$subscription) {
+            return response()->json([
                 'status' => 'inactive',
                 'days_remaining' => null,
                 'message' => 'You do not have a subscription',
@@ -715,7 +712,7 @@ class CustomerController extends Controller
                 'end_date' => null,
                 'is_expiring_soon' => null
             ]);
-    }
+        }
         if ($subscription->remaining_agreements !== null) {
 
             if ($subscription->remaining_agreements <= 0) {
@@ -742,7 +739,7 @@ class CustomerController extends Controller
         }
 
         $start = Carbon::parse($subscription->start_date);
-        $end   = Carbon::parse($subscription->end_date);
+        $end = Carbon::parse($subscription->end_date);
 
         // Lifetime plan
         if (is_null($end)) {
@@ -795,26 +792,26 @@ class CustomerController extends Controller
             'is_expiring_soon' => $isExpiringSoon
         ]);
     }
-  
-  /**
-   * Retired: the feed is public and sharing is chosen per agreement, so this
-   * flag no longer controls anything. Kept as a no-op because app builds
-   * already in the wild still call it from the old Profile switch — removing
-   * the route would 404 them mid-flow. Delete once those builds are gone.
-   */
-  public function updateAllowPrompt(Request $request)
-{
-    $request->validate([
-        'allow_prompt' => 'required|boolean',
-    ]);
 
-    return response()->json([
-        'status' => true,
-        'message' => 'Allow prompt updated successfully.',
-        'data' => [
-            'customer_id' => $request->user()->id,
-            'allow_prompt' => $request->boolean('allow_prompt'),
-        ]
-    ], 200);
-}
+    /**
+     * Retired: the feed is public and sharing is chosen per agreement, so this
+     * flag no longer controls anything. Kept as a no-op because app builds
+     * already in the wild still call it from the old Profile switch — removing
+     * the route would 404 them mid-flow. Delete once those builds are gone.
+     */
+    public function updateAllowPrompt(Request $request)
+    {
+        $request->validate([
+            'allow_prompt' => 'required|boolean',
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Allow prompt updated successfully.',
+            'data' => [
+                'customer_id' => $request->user()->id,
+                'allow_prompt' => $request->boolean('allow_prompt'),
+            ]
+        ], 200);
+    }
 }

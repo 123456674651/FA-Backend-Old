@@ -30,9 +30,6 @@ return new class extends Migration
             // Foreign key constraints (optional, depending on your schema)
             $table->foreign('deal_id')->references('id')->on('deals')->onDelete('cascade');
             $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
-            $table->foreign('city_id')->references('id')->on('cities')->onDelete('cascade');
-            $table->foreign('state_id')->references('id')->on('states')->onDelete('cascade');
-            $table->foreign('country_id')->references('id')->on('countries')->onDelete('cascade');
         });
     }
 

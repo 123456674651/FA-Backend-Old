@@ -5,12 +5,12 @@
     <div class="pagetitle mb-4">
         <div class="row align-items-center">
             <div class="col-md-6 pt-2">
-                <h1 class="fw-bold text-dark mb-1" style="font-size: 28px;">Users</h1>
-                <p class="text-muted mb-0" style="font-size: 14px;">Manage application users.</p>
+                <h1 class="fw-bold text-dark mb-1" style="font-size: 28px;">Admins</h1>
+                <p class="text-muted mb-0" style="font-size: 14px;">Manage admin panel users.</p>
             </div>
             <div class="col-md-6 text-md-end pt-2">
                 <a href="{{ route('users.create') }}" class="btn btn-primary">
-                    <i class="bi bi-plus-circle-fill me-2"></i>Add User
+                    <i class="bi bi-plus-circle-fill me-2"></i>Add Admin
                 </a>
             </div>
         </div>
@@ -27,7 +27,7 @@
                                 <th>Profile</th>
                                 <th>Name</th>
                                 <th>Email</th>
-                                <th>Mobile</th>
+                                <th>Role</th>
                                 <th class="text-center" style="width: 150px;">Status</th>
                                 <th>Created Date</th>
                                 <th class="text-center" style="width: 150px;">Action</th>
@@ -56,7 +56,7 @@ $(document).ready(function() {
             { data: 'profile', name: 'profile', orderable: false, searchable: false },
             { data: 'name', name: 'name' },
             { data: 'email', name: 'email' },
-            { data: 'mobile', name: 'mobile' },
+            { data: 'role', name: 'role' },
             { data: 'status', name: 'status', className: 'text-center' },
             { data: 'created_at', name: 'created_at' },
             { data: 'action', name: 'action', orderable: false, searchable: false, className: 'text-center' }

@@ -1,7 +1,7 @@
 @extends('admin.layout.admin')
 
 @section('content')
-    <main id="main" class="main">
+    <main id="main" class="main settings-page">
         <div class="row">
             <div class="pagetitle col-lg-6 pt-2">
                 <h1>Settings</h1>
@@ -26,245 +26,350 @@
         </div>
 
         <section class="section">
-            <div class="card shadow-sm border-0" style="border-radius: 12px;">
-                <div class="card-body p-4">
-                    <div class="row">
-                        <!-- Navigation Tabs (Vertical/Left Side) -->
-                        <div class="col-lg-3 col-md-4 border-end pe-md-4 mb-4 mb-md-0">
-                            <div class="nav flex-column nav-pills" id="settingsTabs" role="tablist" aria-orientation="vertical">
-                                <button class="nav-link text-start py-3 px-4 mb-2 rounded-3 {{ $activeTab === 'profile' ? 'active' : '' }}" id="tab-profile-btn" data-bs-toggle="pill" data-bs-target="#tab-profile" type="button" role="tab">
-                                    <i class="bi bi-person me-2"></i> Profile
+            <div class="row g-4">
+                <!-- Navigation Tabs (Vertical/Left Side) -->
+                <div class="col-lg-3">
+                    <div class="card settings-nav-card">
+                        <div class="card-body p-3">
+                            <h6 class="settings-nav-title">Settings</h6>
+                            <div class="nav flex-column settings-nav" id="settingsTabs" role="tablist" aria-orientation="vertical">
+                                <button class="settings-nav-link {{ $activeTab === 'profile' ? 'active' : '' }}" id="tab-profile-btn" data-bs-toggle="pill" data-bs-target="#tab-profile" type="button" role="tab">
+                                    <i class="bi bi-person"></i> Profile
                                 </button>
-                               <button class="nav-link text-start py-3 px-4 mb-2 rounded-3 {{ $activeTab === 'company' ? 'active' : '' }}" id="tab-company-btn" data-bs-toggle="pill" data-bs-target="#tab-company" type="button" role="tab">
-                                    <i class="bi bi-building me-2"></i> Company Settings
+                                <button class="settings-nav-link {{ $activeTab === 'company' ? 'active' : '' }}" id="tab-company-btn" data-bs-toggle="pill" data-bs-target="#tab-company" type="button" role="tab">
+                                    <i class="bi bi-building"></i> Company Settings
                                 </button>
-                                
-                                <button class="nav-link text-start py-3 px-4 mb-2 rounded-3" id="tab-smtp-btn" data-bs-toggle="pill" data-bs-target="#tab-smtp" type="button" role="tab">
-                                    <i class="bi bi-envelope me-2"></i> SMTP
+                                <button class="settings-nav-link" id="tab-smtp-btn" data-bs-toggle="pill" data-bs-target="#tab-smtp" type="button" role="tab">
+                                    <i class="bi bi-envelope"></i> SMTP
                                 </button>
-                                <button class="nav-link text-start py-3 px-4 mb-2 rounded-3" id="tab-firebase-btn" data-bs-toggle="pill" data-bs-target="#tab-firebase" type="button" role="tab">
-                                    <i class="bi bi-phone me-2"></i> Firebase
+                                <button class="settings-nav-link" id="tab-firebase-btn" data-bs-toggle="pill" data-bs-target="#tab-firebase" type="button" role="tab">
+                                    <i class="bi bi-phone"></i> Firebase
                                 </button>
-                               
-                               
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Tab Content (Right Side) -->
-                        <div class="col-lg-9 col-md-8 ps-md-4">
-                            <div class="tab-content" id="settingsTabContent">
-                                
-                                <!-- Profile Tab -->
-                                <div class="tab-pane fade {{ $activeTab === 'profile' ? 'show active' : '' }}" id="tab-profile" role="tabpanel">
-                                    <h4 class="fw-bold mb-4 text-dark">Profile Settings</h4>
-                                    
-                                    <!-- Profile Image & Details -->
-                                    <div class="row g-4 mb-5">
-                                        <div class="col-md-4 text-center border-end">
-                                            <label class="form-label fw-bold d-block mb-3">Profile Image</label>
-                                            <div class="mb-3 border p-2 rounded bg-light d-inline-block">
-                                                <img id="avatar-preview-settings" 
-                                                     src="{{ auth()->user()->profile_picture ? asset(auth()->user()->profile_picture) : asset('assets/img/profile-img.jpg') }}" 
-                                                     alt="Profile Picture" 
-                                                     class="img-thumbnail" 
-                                                     style="height: 120px; width: 120px; object-fit: cover; border-radius: 50%;">
-                                            </div>
-                                            <form action="{{ route('profile.image') }}" method="POST" enctype="multipart/form-data" class="mb-2">
-                                                @csrf
-                                                <div class="input-group input-group-sm mb-2">
-                                                    <input type="file" name="profile_picture" class="form-control" accept="image/*" required>
-                                                    <button type="submit" class="btn btn-dark">Upload</button>
-                                                </div>
-                                            </form>
-                                            @if(auth()->user()->profile_picture)
-                                                <form action="{{ route('profile.image.delete') }}" method="POST">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-outline-danger btn-sm w-100">
-                                                        <i class="bi bi-trash"></i> Remove Image
-                                                    </button>
-                                                </form>
-                                            @endif
-                                        </div>
+                <!-- Tab Content (Right Side) -->
+                <div class="col-lg-9">
+                    <div class="tab-content" id="settingsTabContent">
 
-                                        <div class="col-md-8">
-                                            <h5 class="fw-bold mb-3 text-dark">Update Details</h5>
-                                            <form method="POST" action="{{ route('profile.update') }}">
-                                                @csrf
-                                                <div class="row g-3">
-                                                    <div class="col-md-6">
-                                                        <label class="form-label fw-semibold text-muted">Full Name</label>
-                                                        <input name="name" type="text" class="form-control" value="{{ old('name', auth()->user()->name) }}" required>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <label class="form-label fw-semibold text-muted">Email Address</label>
-                                                        <input name="email" type="email" class="form-control" value="{{ old('email', auth()->user()->email) }}" required>
-                                                    </div>
-                                                    <div class="col-12 text-end pt-3">
-                                                        <button type="submit" class="btn btn-dark fw-semibold px-4">Save Profile</button>
-                                                    </div>
-                                                </div>
-                                            </form>
+                        <!-- Profile Tab -->
+                        <div class="tab-pane fade {{ $activeTab === 'profile' ? 'show active' : '' }}" id="tab-profile" role="tabpanel">
+
+                            <!-- Profile Information -->
+                            <div class="card settings-section-card mb-4">
+                                <div class="card-body p-4">
+                                    <div class="settings-section-header">
+                                        <span class="settings-section-icon"><i class="bi bi-person"></i></span>
+                                        <div>
+                                            <h5>Profile Information</h5>
+                                            <p>Update your profile details and profile image.</p>
                                         </div>
                                     </div>
 
-                                    <hr>
-
-                                    <!-- Change Password -->
-                                    <div class="row g-4 mt-3 mb-5">
-                                        <div class="col-md-12">
-                                            <h5 class="fw-bold mb-3 text-dark">Change Password</h5>
-                                            <form method="POST" action="{{ route('profile.password') }}">
-                                                @csrf
-                                                <div class="row g-3">
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold text-muted">Current Password</label>
-                                                        <input name="current_password" type="password" class="form-control" required>
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold text-muted">New Password</label>
-                                                        <input name="new_password" type="password" class="form-control" required>
-                                                    </div>
-                                                    <div class="col-md-4">
-                                                        <label class="form-label fw-semibold text-muted">Confirm Password</label>
-                                                        <input name="new_password_confirmation" type="password" class="form-control" required>
-                                                    </div>
-                                                    <div class="col-12 text-end pt-3">
-                                                        <button type="submit" class="btn btn-dark fw-semibold px-4">Update Password</button>
-                                                    </div>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                    
-                                    <hr>
-
-                                    <!-- Dashboard Logo -->
-                                    <div class="row g-4 mt-3">
-                                        <div class="col-md-4 text-center border-end pe-md-4">
-                                            <label class="form-label fw-bold d-block mb-3">Dashboard Logo</label>
-                                            <div class="bg-dark p-3 rounded d-inline-block border mb-3">
-                                                <img id="logo-preview-settings" 
-                                                     src="{{ asset('assets/img/logo/dashboard_logo.png') }}?v={{ file_exists(public_path('assets/img/logo/dashboard_logo.png')) ? filemtime(public_path('assets/img/logo/dashboard_logo.png')) : time() }}" 
-                                                     alt="Dashboard Logo" 
-                                                     style="max-height: 80px; width: auto; object-fit: contain;">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-8 ps-md-4 align-self-center">
-                                            <h5 class="fw-bold text-dark mb-3">Choose New Logo</h5>
-                                            <form method="POST" action="{{ route('logo.update') }}" enctype="multipart/form-data">
-                                                @csrf
-                                                <div class="mb-3">
-                                                    <input name="logo" type="file" class="form-control" id="logoInputProfileSettings" accept="image/*" onchange="previewLogoProfileSettings(event)" required>
-                                                    <span class="text-muted small d-block mt-1">PNG, JPG, JPEG, SVG or GIF. Max 2MB. Recommendation: Use horizontal shape with transparent background.</span>
-                                                </div>
-                                                <div class="text-end pt-2">
-                                                    <button type="submit" class="btn btn-dark fw-semibold px-4">Upload Logo</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                              
-                               <!-- Company Settings Tab -->
-                                <div class="tab-pane fade {{ $activeTab === 'company' ? 'show active' : '' }}" id="tab-company" role="tabpanel">
-                                    <h4 class="fw-bold mb-4">Company Settings</h4>
-                                    <form class="ajax-settings-form" method="POST" action="{{ route('settings.update') }}" enctype="multipart/form-data">
+                                    <form method="POST" action="{{ route('profile.update') }}" class="settings-profile-form">
                                         @csrf
-                                        <input type="hidden" name="group" value="company">
-                                        <div class="row g-4 mb-4">
-                                            <div class="col-md-12">
-                                                <label class="form-label fw-bold d-block">Company Logo</label>
-                                                <div class="mb-3 border p-2 rounded bg-light d-inline-block">
-                                                    <img id="preview-company_logo" 
-                                                         src="{{ setting('company_logo') ? asset('storage/' . setting('company_logo')) : asset('assets/img/profile-img.jpg') }}" 
-                                                         alt="Company Logo" 
-                                                         class="img-thumbnail" 
-                                                         style="height: 100px; max-width: 150px; object-fit: contain;">
+                                        <div class="row g-4 align-items-center">
+                                            <div class="col-md-3 text-center">
+                                                <div class="settings-avatar-wrap">
+                                                    <img id="avatar-preview-settings"
+                                                         src="{{ auth()->user()->image ? asset(auth()->user()->image) : asset('assets/img/profile-img.jpg') }}"
+                                                         alt="Profile Picture" class="settings-avatar">
+                                                    <label class="settings-avatar-badge" for="avatarUploadInput" title="Change photo">
+                                                        <i class="bi bi-camera-fill"></i>
+                                                    </label>
+                                                    <input type="file" form="avatarUploadForm" id="avatarUploadInput" name="profile_picture" class="d-none" accept="image/*">
                                                 </div>
-                                                <input type="file" name="company_logo" class="form-control branding-file-input" data-preview="preview-company_logo">
-                                                <span class="text-muted small d-block mt-1">PNG, JPG, JPEG, SVG or GIF. Max 2MB. Recommendation: Use horizontal shape with transparent background.</span>
+                                            </div>
+                                            <div class="col-md-9">
+                                                <label class="form-label d-block mb-0">Profile Image</label>
+                                                <span class="text-muted small">JPG, PNG (Max 2MB). Click the camera icon to change.</span>
                                             </div>
                                         </div>
+
+                                        <hr class="my-4">
+
                                         <div class="row g-3">
                                             <div class="col-md-6">
-                                                <label class="form-label">Company Name</label>
-                                                <input type="text" name="company_name" class="form-control" value="{{ setting('company_name') }}" required>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">GSTIN</label>
-                                                <input type="text" name="company_gstin" class="form-control" value="{{ setting('company_gstin') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">GST Percentage</label>
-                                                <input type="number" step="0.01" min="0" max="100" name="gst_percentage" class="form-control" value="{{ setting('gst_percentage', 18) }}">
-                                                <span class="text-muted small d-block mt-1">Plan prices are stored inclusive of this rate. Invoices carve it out as CGST + SGST within {{ setting('company_state') ?: 'the company state' }}, or IGST outside it.</span>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Address Line 1</label>
-                                                <input type="text" name="company_address_line_1" class="form-control" value="{{ setting('company_address_line_1') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Address Line 2</label>
-                                                <input type="text" name="company_address_line_2" class="form-control" value="{{ setting('company_address_line_2') }}">
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label class="form-label">City</label>
-                                                <input type="text" name="company_city" class="form-control" value="{{ setting('company_city') }}">
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label class="form-label">State</label>
-                                                <input type="text" name="company_state" class="form-control" value="{{ setting('company_state') }}">
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label class="form-label">PIN Code</label>
-                                                <input type="text" name="company_pin_code" class="form-control" value="{{ setting('company_pin_code') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Country</label>
-                                                <input type="text" name="company_country" class="form-control" value="{{ setting('company_country') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Phone Number</label>
-                                                <input type="text" name="company_phone_number" class="form-control" value="{{ setting('company_phone_number') }}">
+                                                <label class="form-label">Full Name</label>
+                                                <input name="name" type="text" class="form-control" value="{{ old('name', auth()->user()->name) }}" required>
                                             </div>
                                             <div class="col-md-6">
                                                 <label class="form-label">Email Address</label>
-                                                <input type="email" name="company_email_address" class="form-control" value="{{ setting('company_email_address') }}">
+                                                <input name="email" type="email" class="form-control" value="{{ old('email', auth()->user()->email) }}" required>
                                             </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Website</label>
-                                                <input type="url" name="company_website" class="form-control" value="{{ setting('company_website') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Bank Name</label>
-                                                <input type="text" name="company_bank_name" class="form-control" value="{{ setting('company_bank_name') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Account Holder Name</label>
-                                                <input type="text" name="company_account_holder_name" class="form-control" value="{{ setting('company_account_holder_name') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Account Number</label>
-                                                <input type="text" name="company_account_number" class="form-control" value="{{ setting('company_account_number') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">IFSC Code</label>
-                                                <input type="text" name="company_ifsc_code" class="form-control" value="{{ setting('company_ifsc_code') }}">
-                                            </div>
-                                            <div class="col-md-12">
-                                                <label class="form-label">UPI ID</label>
-                                                <input type="text" name="company_upi_id" class="form-control" value="{{ setting('company_upi_id') }}">
-                                            </div>
-                                            <div class="col-md-12">
-                                                <label class="form-label">Invoice Footer</label>
-                                                <textarea name="company_invoice_footer" class="form-control" rows="2">{{ setting('company_invoice_footer') }}</textarea>
-                                            </div>
-                                            <div class="col-md-12">
-                                                <label class="form-label">Terms & Conditions</label>
-                                                <textarea name="company_terms_conditions" class="form-control" rows="4">{{ setting('company_terms_conditions') }}</textarea>
+                                            <div class="col-12 text-end pt-2">
+                                                <button type="submit" class="btn btn-dark fw-semibold px-4">Save Changes</button>
                                             </div>
                                         </div>
+                                    </form>
+
+                                    <form id="avatarUploadForm" action="{{ route('profile.image') }}" method="POST" enctype="multipart/form-data" class="d-none">
+                                        @csrf
+                                    </form>
+                                    @if(auth()->user()->image)
+                                        <form action="{{ route('profile.image.delete') }}" method="POST" class="d-inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-link btn-sm text-danger p-0 mt-2">
+                                                <i class="bi bi-trash"></i> Remove current image
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <!-- Security -->
+                            <div class="card settings-section-card mb-4">
+                                <div class="card-body p-4">
+                                    <div class="settings-section-header">
+                                        <span class="settings-section-icon"><i class="bi bi-lock"></i></span>
+                                        <div>
+                                            <h5>Security</h5>
+                                            <p>Change your account password.</p>
+                                        </div>
+                                    </div>
+
+                                    <form method="POST" action="{{ route('profile.password') }}">
+                                        @csrf
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label">Current Password</label>
+                                                <div class="settings-password-field">
+                                                    <input name="current_password" type="password" class="form-control" placeholder="Enter current password" required>
+                                                    <i class="bi bi-eye settings-toggle-password"></i>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">New Password</label>
+                                                <div class="settings-password-field">
+                                                    <input name="new_password" type="password" class="form-control" placeholder="Enter new password" required>
+                                                    <i class="bi bi-eye settings-toggle-password"></i>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label">Confirm Password</label>
+                                                <div class="settings-password-field">
+                                                    <input name="new_password_confirmation" type="password" class="form-control" placeholder="Confirm new password" required>
+                                                    <i class="bi bi-eye settings-toggle-password"></i>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 text-end pt-2">
+                                                <button type="submit" class="btn btn-dark fw-semibold px-4">Update Password</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <!-- Branding -->
+                            <div class="card settings-section-card">
+                                <div class="card-body p-4">
+                                    <div class="settings-section-header">
+                                        <span class="settings-section-icon"><i class="bi bi-image"></i></span>
+                                        <div>
+                                            <h5>Branding</h5>
+                                            <p>Upload your application logo. Recommended: Use horizontal shape with transparent background.</p>
+                                        </div>
+                                    </div>
+
+                                    <form method="POST" action="{{ route('logo.update') }}" enctype="multipart/form-data">
+                                        @csrf
+                                        <div class="row g-4">
+                                            <div class="col-md-6">
+                                                <label class="form-label">Current Logo</label>
+                                                <div class="settings-logo-preview">
+                                                    <img id="logo-preview-settings"
+                                                         src="{{ asset('assets/img/logo/dashboard_logo.png') }}?v={{ file_exists(public_path('assets/img/logo/dashboard_logo.png')) ? filemtime(public_path('assets/img/logo/dashboard_logo.png')) : time() }}"
+                                                         alt="Dashboard Logo">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">Upload New Logo</label>
+                                                <label class="settings-dropzone" for="logoInputProfileSettings">
+                                                    <i class="bi bi-upload"></i>
+                                                    <span>Drag and drop your logo here<br>or click to choose file</span>
+                                                </label>
+                                                <input name="logo" type="file" class="d-none" id="logoInputProfileSettings" accept="image/*" onchange="previewLogoProfileSettings(event)" required>
+                                                <span class="text-muted small d-block mt-2">PNG, JPG or SVG (Max 2MB)</span>
+                                                <div class="text-end pt-2">
+                                                    <button type="submit" class="btn btn-dark fw-semibold px-4">Upload Logo</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                       <!-- Company Settings Tab -->
+                                <div class="tab-pane fade {{ $activeTab === 'company' ? 'show active' : '' }}" id="tab-company" role="tabpanel">
+                                    <form class="ajax-settings-form" method="POST" action="{{ route('settings.update') }}" enctype="multipart/form-data">
+                                        @csrf
+                                        <input type="hidden" name="group" value="company">
+
+                                        <!-- Company Profile -->
+                                        <div class="card settings-section-card mb-4">
+                                            <div class="card-body p-4">
+                                                <div class="settings-section-header">
+                                                    <span class="settings-section-icon"><i class="bi bi-building"></i></span>
+                                                    <div>
+                                                        <h5>Company Profile</h5>
+                                                        <p>Basic details and logo used across invoices and documents.</p>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-4 mb-4">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Company Logo</label>
+                                                        <div class="settings-logo-preview">
+                                                            <img id="preview-company_logo"
+                                                                 src="{{ setting('company_logo') ? asset('storage/' . setting('company_logo')) : asset('assets/img/profile-img.jpg') }}"
+                                                                 alt="Company Logo">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Upload New Logo</label>
+                                                        <label class="settings-dropzone" for="company_logo_input">
+                                                            <i class="bi bi-upload"></i>
+                                                            <span>Drag and drop your logo here<br>or click to choose file</span>
+                                                        </label>
+                                                        <input type="file" id="company_logo_input" name="company_logo" class="d-none branding-file-input" data-preview="preview-company_logo">
+                                                        <span class="text-muted small d-block mt-2">PNG, JPG, JPEG, SVG or GIF. Max 2MB.</span>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Company Name</label>
+                                                        <input type="text" name="company_name" class="form-control" value="{{ setting('company_name') }}" required>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">GSTIN</label>
+                                                        <input type="text" name="company_gstin" class="form-control" value="{{ setting('company_gstin') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">GST Percentage</label>
+                                                        <input type="number" step="0.01" min="0" max="100" name="gst_percentage" class="form-control" value="{{ setting('gst_percentage', 18) }}">
+                                                        <span class="text-muted small d-block mt-1">Plan prices are stored inclusive of this rate. Invoices carve it out as CGST + SGST within {{ setting('company_state') ?: 'the company state' }}, or IGST outside it.</span>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Phone Number</label>
+                                                        <input type="text" name="company_phone_number" class="form-control" value="{{ setting('company_phone_number') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Email Address</label>
+                                                        <input type="email" name="company_email_address" class="form-control" value="{{ setting('company_email_address') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Website</label>
+                                                        <input type="url" name="company_website" class="form-control" value="{{ setting('company_website') }}">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Address -->
+                                        <div class="card settings-section-card mb-4">
+                                            <div class="card-body p-4">
+                                                <div class="settings-section-header">
+                                                    <span class="settings-section-icon"><i class="bi bi-geo-alt"></i></span>
+                                                    <div>
+                                                        <h5>Address</h5>
+                                                        <p>Registered business address for invoices and legal documents.</p>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Address Line 1</label>
+                                                        <input type="text" name="company_address_line_1" class="form-control" value="{{ setting('company_address_line_1') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Address Line 2</label>
+                                                        <input type="text" name="company_address_line_2" class="form-control" value="{{ setting('company_address_line_2') }}">
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">City</label>
+                                                        <input type="text" name="company_city" class="form-control" value="{{ setting('company_city') }}">
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">State</label>
+                                                        <input type="text" name="company_state" class="form-control" value="{{ setting('company_state') }}">
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <label class="form-label">PIN Code</label>
+                                                        <input type="text" name="company_pin_code" class="form-control" value="{{ setting('company_pin_code') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Country</label>
+                                                        <input type="text" name="company_country" class="form-control" value="{{ setting('company_country') }}">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Banking Details -->
+                                        <div class="card settings-section-card mb-4">
+                                            <div class="card-body p-4">
+                                                <div class="settings-section-header">
+                                                    <span class="settings-section-icon"><i class="bi bi-bank"></i></span>
+                                                    <div>
+                                                        <h5>Banking Details</h5>
+                                                        <p>Used on invoices for accepting payments.</p>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Bank Name</label>
+                                                        <input type="text" name="company_bank_name" class="form-control" value="{{ setting('company_bank_name') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Account Holder Name</label>
+                                                        <input type="text" name="company_account_holder_name" class="form-control" value="{{ setting('company_account_holder_name') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Account Number</label>
+                                                        <input type="text" name="company_account_number" class="form-control" value="{{ setting('company_account_number') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">IFSC Code</label>
+                                                        <input type="text" name="company_ifsc_code" class="form-control" value="{{ setting('company_ifsc_code') }}">
+                                                    </div>
+                                                    <div class="col-md-12">
+                                                        <label class="form-label">UPI ID</label>
+                                                        <input type="text" name="company_upi_id" class="form-control" value="{{ setting('company_upi_id') }}">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Invoice Text -->
+                                        <div class="card settings-section-card">
+                                            <div class="card-body p-4">
+                                                <div class="settings-section-header">
+                                                    <span class="settings-section-icon"><i class="bi bi-receipt"></i></span>
+                                                    <div>
+                                                        <h5>Invoice Text</h5>
+                                                        <p>Footer note and terms printed on every invoice.</p>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3">
+                                                    <div class="col-md-12">
+                                                        <label class="form-label">Invoice Footer</label>
+                                                        <textarea name="company_invoice_footer" class="form-control" rows="2">{{ setting('company_invoice_footer') }}</textarea>
+                                                    </div>
+                                                    <div class="col-md-12">
+                                                        <label class="form-label">Terms & Conditions</label>
+                                                        <textarea name="company_terms_conditions" class="form-control" rows="4">{{ setting('company_terms_conditions') }}</textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         @include('admin.settings.partials.buttons')
                                     </form>
                                 </div>
@@ -378,48 +483,77 @@
 
                                 <!-- SMTP Tab -->
                                 <div class="tab-pane fade" id="tab-smtp" role="tabpanel">
-                                    <div class="d-flex justify-content-between align-items-center mb-4">
-                                        <h4 class="fw-bold mb-0">SMTP Configurations</h4>
-                                        <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#testSmtpModal">
-                                            <i class="bi bi-envelope-open"></i> Send Test Email
-                                        </button>
-                                    </div>
                                     <form class="ajax-settings-form" id="smtpForm" method="POST" action="{{ route('settings.update') }}">
                                         @csrf
                                         <input type="hidden" name="group" value="smtp">
 
-                                        <div class="row g-3">
-                                            <div class="col-md-6">
-                                                <label class="form-label">Mail Driver</label>
-                                                <input type="text" name="mail_driver" class="form-control" value="{{ setting('mail_driver') }}" required>
+                                        <!-- Server Configuration -->
+                                        <div class="card settings-section-card mb-4">
+                                            <div class="card-body p-4">
+                                                <div class="settings-section-header settings-activity-header">
+                                                    <span class="settings-section-icon"><i class="bi bi-hdd-network"></i></span>
+                                                    <div>
+                                                        <h5>Server Configuration</h5>
+                                                        <p>Connection details for your outgoing mail server.</p>
+                                                    </div>
+                                                    <button type="button" class="btn btn-secondary btn-sm ms-auto" data-bs-toggle="modal" data-bs-target="#testSmtpModal">
+                                                        <i class="bi bi-envelope-open"></i> Send Test Email
+                                                    </button>
+                                                </div>
+
+                                                <div class="row g-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Mail Driver</label>
+                                                        <input type="text" name="mail_driver" class="form-control" value="{{ setting('mail_driver') }}" required>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Mail Host</label>
+                                                        <input type="text" name="mail_host" class="form-control" value="{{ setting('mail_host') }}" required>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Mail Port</label>
+                                                        <input type="number" name="mail_port" class="form-control" value="{{ setting('mail_port') }}" required>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Encryption</label>
+                                                        <input type="text" name="mail_encryption" class="form-control" value="{{ setting('mail_encryption') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Username</label>
+                                                        <input type="text" name="mail_username" class="form-control" value="{{ setting('mail_username') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Password</label>
+                                                        <div class="settings-password-field">
+                                                            <input type="password" name="mail_password" class="form-control" placeholder="••••••••">
+                                                            <i class="bi bi-eye settings-toggle-password"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Mail Host</label>
-                                                <input type="text" name="mail_host" class="form-control" value="{{ setting('mail_host') }}" required>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Mail Port</label>
-                                                <input type="number" name="mail_port" class="form-control" value="{{ setting('mail_port') }}" required>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Encryption</label>
-                                                <input type="text" name="mail_encryption" class="form-control" value="{{ setting('mail_encryption') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Username</label>
-                                                <input type="text" name="mail_username" class="form-control" value="{{ setting('mail_username') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Password</label>
-                                                <input type="password" name="mail_password" class="form-control" placeholder="••••••••">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">From Name</label>
-                                                <input type="text" name="mail_from_name" class="form-control" value="{{ setting('mail_from_name') }}" required>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">From Email</label>
-                                                <input type="email" name="mail_from_email" class="form-control" value="{{ setting('mail_from_email') }}" required>
+                                        </div>
+
+                                        <!-- Sender Identity -->
+                                        <div class="card settings-section-card">
+                                            <div class="card-body p-4">
+                                                <div class="settings-section-header">
+                                                    <span class="settings-section-icon"><i class="bi bi-send"></i></span>
+                                                    <div>
+                                                        <h5>Sender Identity</h5>
+                                                        <p>Name and email address used when sending outgoing mail.</p>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">From Name</label>
+                                                        <input type="text" name="mail_from_name" class="form-control" value="{{ setting('mail_from_name') }}" required>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">From Email</label>
+                                                        <input type="email" name="mail_from_email" class="form-control" value="{{ setting('mail_from_email') }}" required>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -429,51 +563,89 @@
 
                                 <!-- Firebase Tab -->
                                 <div class="tab-pane fade" id="tab-firebase" role="tabpanel">
-                                    <div class="d-flex justify-content-between align-items-center mb-4">
-                                        <h4 class="fw-bold mb-0">Firebase Settings</h4>
-                                        <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#testFirebaseModal">
-                                            <i class="bi bi-bell"></i> Send Test Notification
-                                        </button>
-                                    </div>
                                     <form class="ajax-settings-form" id="firebaseForm" method="POST" action="{{ route('settings.update') }}" enctype="multipart/form-data">
                                         @csrf
                                         <input type="hidden" name="group" value="firebase">
 
-                                        <div class="row g-3">
-                                            <div class="col-md-6">
-                                                <label class="form-label">Project ID</label>
-                                                <input type="text" name="firebase_project_id" class="form-control" value="{{ setting('firebase_project_id') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">API Key</label>
-                                                <input type="text" name="firebase_api_key" class="form-control" value="{{ setting('firebase_api_key') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Sender ID</label>
-                                                <input type="text" name="firebase_sender_id" class="form-control" value="{{ setting('firebase_sender_id') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">App ID</label>
-                                                <input type="text" name="firebase_app_id" class="form-control" value="{{ setting('firebase_app_id') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">Server Key</label>
-                                                <input type="text" name="firebase_server_key" class="form-control" value="{{ setting('firebase_server_key') }}">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label">VAPID Key</label>
-                                                <input type="text" name="firebase_vapid_key" class="form-control" value="{{ setting('firebase_vapid_key') }}">
-                                            </div>
-                                            <div class="col-12">
-                                                <label class="form-label">Service Account JSON Upload</label>
-                                                <input type="file" name="firebase_service_account_json" class="form-control">
-                                                @if(setting('firebase_service_account_json'))
-                                                    <div class="form-text text-success">
-                                                        <i class="bi bi-file-earmark-check"></i> JSON Key File Saved: <a href="{{ asset('storage/' . setting('firebase_service_account_json')) }}" target="_blank">View File</a>
+                                        <!-- Project Credentials -->
+                                        <div class="card settings-section-card mb-4">
+                                            <div class="card-body p-4">
+                                                <div class="settings-section-header settings-activity-header">
+                                                    <span class="settings-section-icon"><i class="bi bi-phone"></i></span>
+                                                    <div>
+                                                        <h5>Project Credentials</h5>
+                                                        <p>Firebase project keys used for push notifications.</p>
                                                     </div>
-                                                @endif
+                                                    <button type="button" class="btn btn-secondary btn-sm ms-auto" data-bs-toggle="modal" data-bs-target="#testFirebaseModal">
+                                                        <i class="bi bi-bell"></i> Send Test Notification
+                                                    </button>
+                                                </div>
+
+                                                <div class="row g-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Project ID</label>
+                                                        <input type="text" name="firebase_project_id" class="form-control" value="{{ setting('firebase_project_id') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">API Key</label>
+                                                        <input type="text" name="firebase_api_key" class="form-control" value="{{ setting('firebase_api_key') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Sender ID</label>
+                                                        <input type="text" name="firebase_sender_id" class="form-control" value="{{ setting('firebase_sender_id') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">App ID</label>
+                                                        <input type="text" name="firebase_app_id" class="form-control" value="{{ setting('firebase_app_id') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">Server Key</label>
+                                                        <input type="text" name="firebase_server_key" class="form-control" value="{{ setting('firebase_server_key') }}">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">VAPID Key</label>
+                                                        <input type="text" name="firebase_vapid_key" class="form-control" value="{{ setting('firebase_vapid_key') }}">
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div class="col-12 mt-3">
+                                        </div>
+
+                                        <!-- Service Account -->
+                                        <div class="card settings-section-card mb-4">
+                                            <div class="card-body p-4">
+                                                <div class="settings-section-header">
+                                                    <span class="settings-section-icon"><i class="bi bi-file-earmark-lock"></i></span>
+                                                    <div>
+                                                        <h5>Service Account</h5>
+                                                        <p>Upload the JSON key file used to authenticate server-side requests.</p>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-3">
+                                                    <div class="col-12">
+                                                        <label class="form-label">Service Account JSON Upload</label>
+                                                        <input type="file" name="firebase_service_account_json" class="form-control">
+                                                        @if(setting('firebase_service_account_json'))
+                                                            <div class="form-text text-success">
+                                                                <i class="bi bi-file-earmark-check"></i> JSON Key File Saved: <a href="{{ asset('storage/' . setting('firebase_service_account_json')) }}" target="_blank">View File</a>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Push Notifications -->
+                                        <div class="card settings-section-card">
+                                            <div class="card-body p-4">
+                                                <div class="settings-section-header">
+                                                    <span class="settings-section-icon"><i class="bi bi-bell"></i></span>
+                                                    <div>
+                                                        <h5>Push Notifications</h5>
+                                                        <p>Control whether push notifications are sent to devices.</p>
+                                                    </div>
+                                                </div>
+
                                                 <div class="form-check form-switch">
                                                     <input type="checkbox" name="enable_push_notification" value="1" class="form-check-input" id="enablePush" {{ setting('enable_push_notification') ? 'checked' : '' }}>
                                                     <label class="form-check-label fw-bold" for="enablePush">Enable Push Notifications</label>
@@ -1085,57 +1257,9 @@
                                     </div>
                                 </div>
 
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Activity Logs Section -->
-            <div class="card mt-4 shadow-sm border-0" style="border-radius: 12px;">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-4"><i class="bi bi-clock-history"></i> Settings Activity Audit Log</h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>User</th>
-                                    <th>Action</th>
-                                    <th>Description</th>
-                                    <th>IP Address</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse ($activityLogs as $log)
-                                    <tr>
-                                        <td>
-                                            <div class="fw-bold">{{ $log->user ? $log->user->name : 'System' }}</div>
-                                            <div class="small text-muted">{{ $log->user ? $log->user->email : '' }}</div>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-dark">{{ $log->action }}</span>
-                                        </td>
-                                        <td>
-                                            {{ $log->description }}
-                                        </td>
-                                        <td class="small text-muted">
-                                            {{ $log->ip_address }}
-                                        </td>
-                                        <td>
-                                            {{ $log->created_at->format('Y-m-d H:i:s') }}
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center text-muted">No settings activities logged yet.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+                            </div><!-- /#settingsTabContent -->
+                        </div><!-- /.col-lg-9 -->
+                    </div><!-- /.row -->
         </section>
     </main>
 
@@ -1174,6 +1298,26 @@
                     };
                     reader.readAsDataURL(fileInput.files[0]);
                 }
+            });
+
+            // Avatar: preview + auto-submit on file pick
+            $('#avatarUploadInput').on('change', function () {
+                if (this.files && this.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        $('#avatar-preview-settings').attr('src', e.target.result);
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                    $('#avatarUploadForm').trigger('submit');
+                }
+            });
+
+            // Password fields: show/hide toggle
+            $('.settings-toggle-password').on('click', function () {
+                const $input = $(this).siblings('input');
+                const isHidden = $input.attr('type') === 'password';
+                $input.attr('type', isHidden ? 'text' : 'password');
+                $(this).toggleClass('bi-eye bi-eye-slash');
             });
 
             // Initialize ClassicEditor for Legal Rich Text Areas

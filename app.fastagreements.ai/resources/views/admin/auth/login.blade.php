@@ -5,8 +5,8 @@
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
-    <title>Login - Fast Agreement</title>
-    <meta content="Fast Agreement Admin Login" name="description">
+    <title>Login - Fast Agreements</title>
+    <meta content="Fast Agreements Admin Login" name="description">
 
     <!-- Favicons -->
     <link href="{{ asset('assets/img/logo/logo.jpeg') }}" rel="icon">
@@ -24,104 +24,329 @@
     <link href="{{ asset('assets/css/style.css') }}" rel="stylesheet">
 
     <style>
+        :root {
+            --brand-ink: #17213a;
+            --brand-navy: #17356f;
+            --brand-gold: #c9a227;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            background-color: #f6f9ff;
             font-family: "Open Sans", sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
             margin: 0;
-            padding: 20px;
+            padding: 24px;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .login-page {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background: #0f1c3f url('{{ asset('assets/img/logo/background.png') }}') center center / cover no-repeat;
+        }
+
+        .login-page::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(
+                    circle at center,
+                    rgba(238, 245, 252, 0.10) 0%,
+                    rgba(10, 27, 55, 0.20) 100%
+                );
         }
 
         .login-card {
-            background: #ffffff;
-            border: 1px solid #e0e0e0;
-            border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
-            max-width: 420px;
+            position: relative;
+            z-index: 1;
+            background: rgba(255, 255, 255, 0.94);
+            -webkit-backdrop-filter: blur(14px);
+            backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            border-radius: 18px;
+            box-shadow: 0 24px 65px rgba(15, 35, 70, 0.22);
+            max-width: 380px;
             width: 100%;
-            padding: 40px 30px;
-            transition: all 0.3s ease;
-        }
-
-        .login-card:hover {
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+            padding: 26px 30px 24px;
         }
 
         .brand-logo {
-            text-align: center;
-            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            margin-bottom: 20px;
         }
 
         .brand-logo img {
-            max-width: 100%;
-            height: auto;
-            max-height: 60px;
+            max-height: 56px;
+            width: auto;
             object-fit: contain;
         }
 
-        .btn-black {
-            background-color: #111111;
+        .brand-logo .brand-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
+            background: linear-gradient(135deg, #102653, #1d427e);
             color: #ffffff;
-            border: 1px solid #111111;
+            font-size: 1.05rem;
+        }
+
+        .brand-logo .brand-text {
+            font-family: "Poppins", "Open Sans", sans-serif;
+            font-size: 1.2rem;
+            line-height: 1;
+            color: var(--brand-navy);
+        }
+
+        .brand-logo .brand-text .brand-fast {
+            font-weight: 400;
+        }
+
+        .brand-logo .brand-text .brand-agreements {
             font-weight: 600;
-            padding: 10px 20px;
-            border-radius: 6px;
-            transition: all 0.2s ease-in-out;
         }
 
-        .btn-black:hover, .btn-black:focus {
-            background-color: #ffffff;
-            color: #111111;
-            border-color: #111111;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        .brand-logo .brand-sub {
+            display: block;
+            font-family: "Open Sans", sans-serif;
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.16em;
+            color: var(--brand-gold);
+            margin-top: 3px;
         }
 
-        .form-control:focus {
-            border-color: #111111;
-            box-shadow: 0 0 0 0.2rem rgba(17, 17, 17, 0.15);
+        .login-title {
+            text-align: center;
+            font-weight: 600;
+            color: var(--brand-ink);
+            font-size: 1.3rem;
+            margin: 0 0 4px;
         }
 
-        .form-check-input:checked {
-            background-color: #111111;
-            border-color: #111111;
+        .login-subtitle {
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.85rem;
+            margin: 0 0 22px;
         }
 
         .form-label {
             font-weight: 500;
-            color: #444444;
+            color: #374151;
+            font-size: 0.875rem;
+            margin-bottom: 6px;
+        }
+
+        .field {
+            position: relative;
+        }
+
+        .field .field-icon {
+            position: absolute;
+            top: 50%;
+            left: 14px;
+            transform: translateY(-50%);
+            color: #8a97ac;
+            font-size: 0.95rem;
+            pointer-events: none;
+        }
+
+        .field .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 8px;
+            transform: translateY(-50%);
+            border: 0;
+            background: transparent;
+            color: #8a97ac;
+            padding: 4px 8px;
+            font-size: 0.95rem;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .field .toggle-password:hover {
+            color: var(--brand-navy);
+        }
+
+        .form-control,
+        input.form-control {
+            height: 48px;
+            background: #ffffff;
+            border: 1px solid #d7dfeb;
+            border-radius: 9px;
+            color: #17213a;
+            font-size: 0.9rem;
+            padding: 0 14px 0 38px;
+        }
+
+        .field.no-icon .form-control {
+            padding-left: 14px;
+        }
+
+        #password {
+            padding-right: 40px;
+        }
+
+        .form-control::placeholder {
+            color: #9aa6b8;
+            font-size: 0.88rem;
+        }
+
+        .form-control:focus {
+            background: #ffffff;
+            border-color: var(--brand-navy);
+            box-shadow: 0 0 0 4px rgba(23, 53, 111, 0.10);
+            outline: none;
+        }
+
+        .form-control.is-invalid {
+            border-color: #e0736f;
+        }
+
+        .form-control.is-invalid:focus {
+            box-shadow: 0 0 0 4px rgba(224, 115, 111, 0.12);
+        }
+
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus {
+            -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+            -webkit-text-fill-color: #17213a;
+            caret-color: #17213a;
+        }
+
+        .form-check {
+            margin: 12px 0 18px;
+        }
+
+        .form-check-label {
+            font-size: 0.82rem;
+        }
+
+        .form-check-input:checked {
+            background-color: var(--brand-navy);
+            border-color: var(--brand-navy);
+        }
+
+        .sign-in-btn {
+            width: 100%;
+            height: 50px;
+            border: 0;
+            border-radius: 9px;
+            background: linear-gradient(135deg, #102653, #1d427e);
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: 0.03em;
+            box-shadow: 0 8px 20px rgba(16, 38, 83, 0.20);
+            transition: 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .sign-in-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 11px 24px rgba(16, 38, 83, 0.27);
+            color: #ffffff;
+        }
+
+        .sign-in-btn:disabled {
+            opacity: 0.75;
+            transform: none;
+            cursor: progress;
+        }
+
+        .btn-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.45);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: btn-spin 0.7s linear infinite;
+        }
+
+        @keyframes btn-spin {
+            to { transform: rotate(360deg); }
         }
 
         .error-message {
-            font-size: 0.85rem;
-            color: #dc3545;
-            margin-top: 5px;
+            font-size: 0.8rem;
+            color: #c0564f;
+            margin-top: 6px;
+        }
+
+        .hint-message {
+            font-size: 0.78rem;
+            color: #8a6d3b;
+            margin-top: 6px;
         }
 
         .alert-custom {
-            border-radius: 6px;
-            font-size: 0.9rem;
+            border-radius: 9px;
+            font-size: 0.84rem;
             border: 1px solid;
             background-color: #fdfdfd;
+        }
+
+        .security-note {
+            margin-top: 14px;
+            padding: 9px 12px;
+            border-radius: 9px;
+            background: rgba(23, 53, 111, 0.06);
+            color: #4b5a76;
+            font-size: 0.78rem;
+            text-align: center;
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #9ca3af;
+            font-size: 0.74rem;
+        }
+
+        @media (max-width: 420px) {
+            .login-card {
+                padding: 24px 20px 22px;
+            }
+
+            .login-page {
+                background-position: top center;
+            }
         }
     </style>
 </head>
 
 <body>
 
+    <div class="login-page"></div>
+
     <div class="login-card">
         <!-- Logo and Branding -->
         <div class="brand-logo">
-            @if(file_exists(public_path('assets/img/logo/dashboard_logo.png')))
-                <img src="{{ asset('assets/img/logo/dashboard_logo.png') }}?v={{ filemtime(public_path('assets/img/logo/dashboard_logo.png')) }}" alt="Fast Agreement">
-            @else
-                <h3 class="fw-bold text-dark m-0">Fast Agreement</h3>
-                <span class="text-muted small">ADMIN PORTAL</span>
-            @endif
+            <img src="{{ asset('assets/img/logo/fast_agreements.png') }}?v={{ file_exists(public_path('assets/img/logo/fast_agreements.png')) ? filemtime(public_path('assets/img/logo/fast_agreements.png')) : 1 }}" alt="Fast Agreements">
         </div>
-        <h4 class="text-center fw-bold text-dark mb-4">Admin Authentication</h4>
+
+        <h1 class="login-title">Welcome Back!</h1>
+        <p class="login-subtitle">Sign in to continue to Fast Agreements.</p>
 
         <!-- Success Message -->
         @if(session('success'))
@@ -139,13 +364,16 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('login') }}">
+        <form method="POST" action="{{ route('login') }}" id="loginForm">
             @csrf
 
             <!-- Email Address -->
             <div class="mb-3">
-                <label for="email" class="form-label">Email Address</label>
-                <input type="email" name="email" id="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" required autofocus autocomplete="username">
+                <label for="email" class="form-label">Email address</label>
+                <div class="field">
+                    <i class="bi bi-envelope field-icon"></i>
+                    <input type="email" name="email" id="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" placeholder="you@company.com" required autofocus autocomplete="username">
+                </div>
                 @error('email')
                     <div class="error-message">
                         <i class="bi bi-exclamation-circle-fill"></i> {{ $message }}
@@ -156,7 +384,14 @@
             <!-- Password -->
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>
-                <input type="password" name="password" id="password" class="form-control @error('password') is-invalid @enderror" required autocomplete="current-password">
+                <div class="field">
+                    <i class="bi bi-lock field-icon"></i>
+                    <input type="password" name="password" id="password" class="form-control @error('password') is-invalid @enderror" placeholder="••••••••" required autocomplete="current-password">
+                    <button type="button" class="toggle-password" tabindex="-1" onclick="togglePassword()"><i class="bi bi-eye" id="togglePasswordIcon"></i></button>
+                </div>
+                <div class="hint-message" id="capsLockHint" style="display: none;">
+                    <i class="bi bi-capslock-fill"></i> Caps Lock is on
+                </div>
                 @error('password')
                     <div class="error-message">
                         <i class="bi bi-exclamation-circle-fill"></i> {{ $message }}
@@ -172,13 +407,60 @@
 
             <!-- Submit Button -->
             <div class="d-grid">
-                <button type="submit" class="btn btn-black">Sign In</button>
+                <button type="submit" class="sign-in-btn" id="signInBtn">
+                    <span class="btn-label">Sign In</span>
+                </button>
             </div>
+
+            @if($errors->any())
+                <div class="security-note">
+                    <i class="bi bi-shield-lock"></i> For your security, access is monitored. Please check your credentials and try again.
+                </div>
+            @endif
         </form>
+
+        <div class="login-footer">
+            &copy; {{ date('Y') }} Fast Agreements &middot; Authorized Access Only
+        </div>
     </div>
 
     <!-- Bootstrap Bundle with Popper -->
     <script src="{{ asset('assets/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        function togglePassword() {
+            var input = document.getElementById('password');
+            var icon = document.getElementById('togglePasswordIcon');
+            var isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            icon.classList.toggle('bi-eye', !isHidden);
+            icon.classList.toggle('bi-eye-slash', isHidden);
+        }
+
+        (function () {
+            var passwordInput = document.getElementById('password');
+            var capsHint = document.getElementById('capsLockHint');
+            if (passwordInput && capsHint) {
+                var updateCaps = function (e) {
+                    var on = e.getModifierState && e.getModifierState('CapsLock');
+                    capsHint.style.display = on ? 'block' : 'none';
+                };
+                passwordInput.addEventListener('keydown', updateCaps);
+                passwordInput.addEventListener('keyup', updateCaps);
+                passwordInput.addEventListener('blur', function () {
+                    capsHint.style.display = 'none';
+                });
+            }
+
+            var form = document.getElementById('loginForm');
+            var btn = document.getElementById('signInBtn');
+            if (form && btn) {
+                form.addEventListener('submit', function () {
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="btn-spinner"></span><span class="btn-label">Signing in…</span>';
+                });
+            }
+        })();
+    </script>
 
 </body>
 

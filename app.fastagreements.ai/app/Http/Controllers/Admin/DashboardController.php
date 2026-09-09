@@ -79,6 +79,18 @@ class DashboardController extends Controller
         $customersCount = $activeCustomers;
       
 
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(compact(
+                'totalRegisteredUsers',
+                'totalAgreements',
+                'todaysAgreements',
+                'monthlyAgreements',
+                'activeCategories',
+                'activeAdvocates',
+                'activeCustomers'
+            ));
+        }
+
         return view('admin.dashboard.index', compact(
             'totalRegisteredUsers',
             'totalAgreements',

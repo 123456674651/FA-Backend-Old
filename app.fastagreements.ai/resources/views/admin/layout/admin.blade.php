@@ -73,12 +73,15 @@
 
         <div class="d-flex align-items-center justify-content-between">
             <a href="{{ url('/') }}" class="logo d-flex align-items-center">
-                <img src="{{ asset('assets/img/logo/dashboard_logo.png') }}?v={{ file_exists(public_path('assets/img/logo/dashboard_logo.png')) ? filemtime(public_path('assets/img/logo/dashboard_logo.png')) : time() }}"
-                    alt="Fast Agreements" class="img-fluid" style="max-height: 90px;
-                            width: auto;
-                            object-fit: contain;">
+                <img class="logo-full" src="{{ asset('assets/img/logo/dashboard_logo.png') }}?v={{ file_exists(public_path('assets/img/logo/dashboard_logo.png')) ? filemtime(public_path('assets/img/logo/dashboard_logo.png')) : time() }}"
+                    alt="Fast Agreements">
+                <img class="logo-icon" src="{{ asset('assets/img/logo/fast_agreements.png') }}"
+                    alt="Fast Agreements">
             </a>
-            <i class="bi bi-list toggle-sidebar-btn"></i>
+            <span class="toggle-sidebar-btn">
+                <i class="bi bi-list toggle-sidebar-btn-open"></i>
+                <i class="bi bi-arrow-bar-right toggle-sidebar-btn-closed"></i>
+            </span>
         </div><!-- End Logo -->
 
         <div class="search-bar d-none">
@@ -245,50 +248,18 @@
                 <li class="nav-item dropdown pe-3">
 
                     <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
-                        <img src="{{ auth()->user()->profile_picture ? asset(auth()->user()->profile_picture) : asset('assets/img/profile-img.jpg') }}"
+                        <img src="{{ auth()->user()->image ? asset(auth()->user()->image) : asset('assets/img/profile-img.jpg') }}"
                             alt="Profile" class="rounded-circle" style="width: 36px; height: 36px; object-fit: cover;">
                         <span class="d-none d-md-block dropdown-toggle ps-2">{{ auth()->user()->name }}</span>
                     </a><!-- End Profile Iamge Icon -->
 
                     <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
-                        <li class="dropdown-header">
-                            <h6>{{ auth()->user()->name }}</h6>
-                            <span>Administrator</span>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-
-                        <!-- <li>
-                            <a class="dropdown-item d-flex align-items-center" href="{{ route('profile.index') }}">
-                                <i class="bi bi-person"></i>
-                                <span>My Profile</span>
-                            </a>
-                        </li> -->
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-
                         <li>
                             <a class="dropdown-item d-flex align-items-center"
                                 href="{{ route('settings.index', ['tab' => 'profile']) }}">
                                 <i class="bi bi-gear"></i>
                                 <span>Account Settings</span>
                             </a>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-
-                        <!-- <li>
-                            <a class="dropdown-item d-flex align-items-center" href="https://fastagreements.ai"
-                                target="_blank">
-                                <i class="bi bi-question-circle"></i>
-                                <span>Need Help?</span>
-                            </a>
-                        </li> -->
-                        <li>
-                            <hr class="dropdown-divider">
                         </li>
 
                         <li>
@@ -496,7 +467,7 @@
                     <span>Admin</span>
                 </a>
             </li><!-- End Users Page Nav -->
-
+    
             <!-- End Purpose Page Nav -->
 
            
@@ -594,7 +565,7 @@
 
 
     <!-- ======= Footer ======= -->
-    <footer id="footer" class="footer mt-auto py-3 bg-white border-top">
+    <!-- <footer id="footer" class="footer mt-auto py-3 bg-white border-top">
         <div class="container-fluid d-flex flex-column flex-sm-row justify-content-between align-items-center px-4">
             <div class="copyright text-muted mb-2 mb-sm-0 text-center text-sm-start">
                 &copy; Copyright <strong><span>Fast Agreements</span></strong>. All Rights Reserved
@@ -603,7 +574,8 @@
                 Version 1.0.0
             </div>
         </div>
-    </footer><!-- End Footer -->
+    </footer> -->
+    <!-- End Footer -->
 
     <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i
             class="bi bi-arrow-up-short"></i></a>
