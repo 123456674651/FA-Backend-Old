@@ -850,6 +850,7 @@ public function amountToWords($number)
 		try {
 			$validator = Validator::make($request->all(), [
 				'agreement_id'   => 'required|integer|exists:agreements,id',
+				'customer_id'    => 'required|integer|exists:customers,id',
 				'amount'         => 'nullable|numeric|min:1',
 				'start_date'     => 'nullable|date',
 				'end_date'       => 'nullable|date',
@@ -872,9 +873,10 @@ public function amountToWords($number)
 				&& $request->has('is_draft')
 				&& !$request->boolean('is_draft');
 
-			// Identity comes from the token, never from the body — the same rule
-			// create_aggriment follows.
-			$callerId = (int) $request->user()->id;
+			// This route carries no token, so the caller is whoever customer_id
+			// says they are. The party check below is a guard against a client
+			// sending the wrong agreement, not an authorisation boundary.
+			$callerId = (int) $request->input('customer_id');
 
 			if ($callerId !== (int) $aggriment->party_1_id && $callerId !== (int) $aggriment->party_2_id) {
 				throw new PartyVerificationException(

@@ -35,7 +35,33 @@ use App\Support\ApiResponse;
 
 /*
 |--------------------------------------------------------------------------
-| 1. Public Routes (No Authentication Required)
+| Mobile API
+|--------------------------------------------------------------------------
+|
+| Three tiers:
+|
+|   public       – reference data drawn before anyone signs in
+|   auth.jwt     – a customer, identified by a session token issued after an
+|                  MSG91-verified phone number
+|   auth         – an admin, on the existing Blade session guard
+|
+| Identity comes from the token, and ownership is checked in the handler. The
+| two exceptions are /update_aggriment/v1 and /feed/publish, which sit in the
+| public tier and take a customer_id in the body — see the note above them.
+|
+| Removed in the JWT cutover:
+|   GET  /clear             unauthenticated cache-clear and storage:link
+|   GET  /advocates         a hardcoded closure that shadowed the controller
+|   POST /verify_mobile     generated its own OTP and returned it in the body
+|   POST /verify_mobile_otp issued no session
+|   POST /customer_register  ) both replaced by /auth/otp-exchange, which
+|   POST /registertion       ) provisions the account on first verified sign-in
+|
+*/
+
+/*
+|--------------------------------------------------------------------------
+| Public
 |--------------------------------------------------------------------------
 */
 
@@ -108,6 +134,19 @@ Route::post('webhooks/razorpay', [RazorpayWebhookController::class, 'handle'])
 
 
 /*
+ * Agreement edit and feed share, deliberately outside the token group.
+ *
+ * Both used to read the caller out of the session token. They now take a
+ * `customer_id` in the body instead: update_aggriment still refuses an
+ * agreement the given customer is not a party to, and feed/publish still
+ * refuses one they did not create — but with no token behind those ids, the
+ * checks catch a client mistake, not a forged caller. Anyone can pass any
+ * customer_id and edit or share that customer's agreements.
+ */
+Route::post('/update_aggriment/v1', [PhpWordController::class, 'update_aggriment']);
+Route::post('/feed/publish', [FeedController::class, 'publish']);
+
+/*
 |--------------------------------------------------------------------------
 | 2. Customer Routes (Requires JWT Authentication: auth.jwt)
 |--------------------------------------------------------------------------
@@ -132,7 +171,8 @@ Route::middleware('auth.jwt')->group(function () {
 
     // Agreements & Deals
     Route::post('/create_aggriment/v1', [PhpWordController::class, 'create_aggriment']);
-    Route::post('/update_aggriment/v1', [PhpWordController::class, 'update_aggriment']);
+    // `/update_aggriment/v1` used to sit here. It is now unauthenticated —
+    // see the public section above.
     Route::post('/convert_Word_to_pdf/v1', [PhpWordController::class, 'convertWordToPdf']);
     Route::post('create_aggriment', [PDFController::class, 'create_aggriment']);
     Route::post('list_aggriment', [PDFController::class, 'list_aggriment']);
@@ -163,6 +203,8 @@ Route::middleware('auth.jwt')->group(function () {
 
     // Feeds & Community
     Route::get('/feed', [FeedController::class, 'index']);
+    // `/feed/publish` used to sit here. It is now unauthenticated — see the
+    // public section above.
     Route::post('/feed', [FeedController::class, 'store']);
     Route::put('/feed', [FeedController::class, 'update']);
     Route::post('/feed/publish', [FeedController::class, 'publish']);

@@ -46,8 +46,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // A rejected phone-verification token describes what the caller sent, so
         // it is a 401 — not the 500 an uncaught RuntimeException would otherwise
-        // produce. Widened from FirebaseTokenException to the interface's base
-        // exception so a future provider is covered without a second handler.
+        // produce. Catches the interface's base exception rather than any one
+        // provider's, so a future provider is covered without a second handler.
         $exceptions->render(function (PhoneVerificationException $e, Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
                 return ApiResponse::error(401, 'PHONE_TOKEN_INVALID', $e->getMessage());
