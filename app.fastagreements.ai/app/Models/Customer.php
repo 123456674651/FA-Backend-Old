@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use App\Models\City;
 use App\Models\State;
 use App\Models\Country;
+use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 
 /**
  * Authenticatable so the mobile API can resolve the caller from a signed token
@@ -19,7 +20,7 @@ use App\Models\Country;
  * Firebase phone verification, and this model is never used with a password
  * broker or the session guard.
  */
-class Customer extends Model implements AuthenticatableContract
+class Customer extends Model implements AuthenticatableContract, JWTSubject
 {
     use HasFactory, AuthenticatableTrait;
 
@@ -242,5 +243,17 @@ class Customer extends Model implements AuthenticatableContract
     public function getTotalAgreementsAttribute()
     {
         return $this->party1Agreements()->count() + $this->party2Agreements()->count();
+    }
+
+    /** JWTSubject: the value put in the token's `sub` claim. */
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    /** JWTSubject: extra claims merged into the token. */
+    public function getJWTCustomClaims()
+    {
+        return ['type' => 'customer'];
     }
 }

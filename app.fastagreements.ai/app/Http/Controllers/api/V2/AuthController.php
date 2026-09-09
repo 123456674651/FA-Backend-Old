@@ -49,7 +49,7 @@ class AuthController extends Controller
         }
 
         if (!$requestId) {
-            return ApiResponse::error(422, 'OTP_SEND_FAILED', 'Could not send OTP. Please try again.');
+            return ApiResponse::error(200, 'OTP_SEND_FAILED', 'Could not send OTP. Please try again.');
         }
 
         return ApiResponse::ok(['reqId' => $requestId], 'OTP sent successfully.');
@@ -75,7 +75,7 @@ class AuthController extends Controller
         }
 
         if (!$verified) {
-            return ApiResponse::error(422, 'OTP_INVALID', 'The OTP you entered is incorrect.');
+            return ApiResponse::error(200, 'OTP_INVALID', 'The OTP you entered is incorrect.');
         }
 
         $customer = Customer::where('mobile', $mobile)->first();
@@ -90,7 +90,7 @@ class AuthController extends Controller
         return ApiResponse::ok([
             'is_new_user' => false,
             'token_type' => 'Bearer',
-            'access_token' => $this->jwt->issueForCustomer($customer->id),
+            'access_token' => $this->jwt->issueForCustomer($customer),
             'user' => $customer,
         ], 'OTP verified successfully.');
     }
@@ -152,7 +152,7 @@ class AuthController extends Controller
             'message' => 'Registered Successfully',
             'data' => [
                 'token_type' => 'Bearer',
-                'access_token' => $this->jwt->issueForCustomer($customer->id),
+                'access_token' => $this->jwt->issueForCustomer($customer),
                 'user' => $customer,
             ],
         ]);
@@ -166,6 +166,7 @@ class AuthController extends Controller
                 'authkey' => config('services.msg91.auth_key'),
                 'template_id' => config('services.msg91.template_id'),
                 'mobile' => '91' . $mobile,
+                'otp_length' => 6,
             ]);
         } catch (ConnectionException $e) {
             $this->logMsg91ConnectionFailure('send (template)', $mobile, $e);

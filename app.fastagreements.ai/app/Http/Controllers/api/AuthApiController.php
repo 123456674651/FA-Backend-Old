@@ -88,7 +88,7 @@ class AuthApiController extends Controller
         }
 
         return ApiResponse::ok([
-            'token' => $this->jwt->issueForCustomer((int) $customer->id),
+            'token' => $this->jwt->issueForCustomer($customer),
             'is_new_customer' => $isNew,
             'profile_complete' => $this->profileIsComplete($customer),
             'customer' => $this->publicCustomer($customer),

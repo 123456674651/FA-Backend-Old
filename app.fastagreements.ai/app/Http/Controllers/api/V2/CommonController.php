@@ -37,7 +37,7 @@ class CommonController extends Controller
         }
 
         if (!$requestId) {
-            return ApiResponse::error(422, 'OTP_SEND_FAILED', 'Could not send OTP. Please try again.');
+            return ApiResponse::error(200, 'OTP_SEND_FAILED', 'Could not send OTP. Please try again.');
         }
 
         return ApiResponse::ok(['reqId' => $requestId], 'OTP sent successfully.');
@@ -63,7 +63,7 @@ class CommonController extends Controller
         }
 
         if (!$verified) {
-            return ApiResponse::error(422, 'OTP_INVALID', 'The OTP you entered is incorrect.');
+            return ApiResponse::error(200, 'OTP_INVALID', 'The OTP you entered is incorrect.');
         }
 
         return ApiResponse::ok(['mobile' => $mobile], 'OTP verified successfully.');
@@ -77,6 +77,7 @@ class CommonController extends Controller
                 'authkey' => config('services.msg91.auth_key'),
                 'template_id' => config('services.msg91.template_id'),
                 'mobile' => '91' . $mobile,
+                'otp_length' => 6,
             ]);
         } catch (ConnectionException $e) {
             $this->logMsg91ConnectionFailure('send (template)', $mobile, $e);
