@@ -35,8 +35,9 @@ use App\Support\ApiResponse;
 |                  MSG91-verified phone number
 |   auth         – an admin, on the existing Blade session guard
 |
-| Nothing below reads a customer id out of a request body. Identity comes from
-| the token, and ownership is checked in the handler.
+| Identity comes from the token, and ownership is checked in the handler. The
+| two exceptions are /update_aggriment/v1 and /feed/publish, which sit in the
+| public tier and take a customer_id in the body — see the note above them.
 |
 | Removed in the JWT cutover:
 |   GET  /clear             unauthenticated cache-clear and storage:link
@@ -135,6 +136,19 @@ Route::get('scemelist', function () {
 });
 
 /*
+ * Agreement edit and feed share, deliberately outside the token group.
+ *
+ * Both used to read the caller out of the session token. They now take a
+ * `customer_id` in the body instead: update_aggriment still refuses an
+ * agreement the given customer is not a party to, and feed/publish still
+ * refuses one they did not create — but with no token behind those ids, the
+ * checks catch a client mistake, not a forged caller. Anyone can pass any
+ * customer_id and edit or share that customer's agreements.
+ */
+Route::post('/update_aggriment/v1', [PhpWordController::class, 'update_aggriment']);
+Route::post('/feed/publish', [FeedController::class, 'publish']);
+
+/*
 |--------------------------------------------------------------------------
 | Customer — requires a session token
 |--------------------------------------------------------------------------
@@ -167,11 +181,8 @@ Route::middleware('auth.jwt')->group(function () {
 
     // Agreements
     Route::post('/create_aggriment/v1', [PhpWordController::class, 'create_aggriment']);
-    // Content edits to an existing agreement, re-rendering the document.
-    // POST, not PATCH: PHP populates no $_FILES for a PATCH body, and an edit
-    // may re-upload party, Aadhaar or vehicle images. Parties, category and
-    // language are fixed at creation — the handler refuses to change them.
-    Route::post('/update_aggriment/v1', [PhpWordController::class, 'update_aggriment']);
+    // `/update_aggriment/v1` used to sit here. It is now unauthenticated —
+    // see the public section above.
     Route::post('/convert_Word_to_pdf/v1', [PhpWordController::class, 'convertWordToPdf']);
     Route::post('create_aggriment', [PDFController::class, 'create_aggriment']);
     Route::post('list_aggriment', [PDFController::class, 'list_aggriment']);
@@ -207,9 +218,8 @@ Route::middleware('auth.jwt')->group(function () {
 
     // Feed
     Route::get('/feed', [FeedController::class, 'index']);
-    // Opt-in share, called from the post-payment prompt. Agreement creation
-    // does not post to the feed on its own.
-    Route::post('/feed/publish', [FeedController::class, 'publish']);
+    // `/feed/publish` used to sit here. It is now unauthenticated — see the
+    // public section above.
     Route::post('/feed', [FeedController::class, 'store']);
     Route::put('/feed', [FeedController::class, 'update']);
     Route::delete('/feed/delete/{feed}', [FeedController::class, 'destroy']);

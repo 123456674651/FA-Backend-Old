@@ -33,14 +33,16 @@
             <div class="col-lg-12">
                 <div class="card p-2 pt-4">
                     <div class="card-body">
-                        <table class="table data-table table-striped table-bordered table-hover">
+                        <table class="table data-table table-striped table-bordered table-hover"
+                            style="table-layout: fixed; width: 100%;">
                             <thead>
                                 <tr>
                                     <th class="text-center align-middle" style="width: 5%;">Sr#</th>
-                                    <th class="text-center align-middle">Name</th>
-                                    <th class="text-center align-middle">Input Type</th>
-                                    <th class="text-center align-middle">Required</th>
-                                    <th class="text-center align-middle">Actions</th>
+                                    <th class="text-center align-middle" style="width: 35%;">Name</th>
+                                    <th class="text-center align-middle" style="width: 25%;">Attribute Code</th>
+                                    <th class="text-center align-middle" style="width: 12%;">Input Type</th>
+                                    <th class="text-center align-middle" style="width: 12%;">Required</th>
+                                    <th class="text-center align-middle" style="width: 11%;">Actions</th>
                                 </tr>
                             </thead>
 
@@ -54,6 +56,7 @@ $i = 1;
                                             {{$i++}}
                                         </td>
                                         <td>{{ $dat->attribute_name }}</td>
+                                        <td style="word-break: break-word;">{{ $dat->attribute_code ?: '-' }}</td>
                                         <td>{{ $dat->input_type_name }}</td>
                                         <td>{{ $dat->is_required_name }}</td>
 

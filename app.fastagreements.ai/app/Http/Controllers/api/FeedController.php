@@ -112,6 +112,7 @@ class FeedController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'agreement_id' => 'required|integer',
+                'customer_id'  => 'required|integer|exists:customers,id',
             ]);
 
             if ($validator->fails()) {
@@ -131,8 +132,10 @@ class FeedController extends Controller
                 ], 404);
             }
 
-            // Identity comes from the signed token, never the request body.
-            if ((int) $agreement->party_1_id !== (int) $request->user()->id) {
+            // The route carries no token, so the caller is whoever customer_id
+            // says they are. The check below is a guard against a client
+            // sending the wrong agreement, not an authorisation boundary.
+            if ((int) $agreement->party_1_id !== (int) $request->input('customer_id')) {
                 return response()->json([
                     'status' => false,
                     'message' => 'You can only share an agreement you created.',

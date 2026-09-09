@@ -77,6 +77,10 @@ class DealCategoryController extends Controller
                                   
                                  <a href="' . $warningsUrl . '" class="edit btn btn-secondary btn-sm" title="Warnings">
                                      <i class="bi bi-shield-exclamation"></i>
+                                 </a>
+
+                                 <a href="' . $attributeUrl . '" class="edit btn btn-success btn-sm" title="Attributes">
+                                     <i class="bi bi-list-check"></i>
                                  </a>';
 
                     $buttons .= '  <a href="' . $manageAttributesUrl . '" class="edit btn btn-info btn-sm text-white" title="Manage Attributes">
