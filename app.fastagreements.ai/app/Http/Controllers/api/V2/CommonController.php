@@ -3,9 +3,6 @@
 namespace App\Http\Controllers\Api\V2;
 
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
-use App\Models\Feed;
-use App\Services\Auth\JwtService;
 use App\Support\ApiResponse;
 use App\Support\MobileNumber;
 use Illuminate\Http\Client\ConnectionException;
@@ -14,27 +11,18 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 
 /**
- * Mobile login with an MSG91 OTP.
+ * Common OTP send/verify. Only for an already-logged-in customer (e.g.
+ * confirming a new mobile number) — not the login flow, which has its own
+ * send/verify in AuthController.
  *
- * Step 1 (login): send an OTP. For the Widget API, MSG91's request id is
- * handed back to the client so it can be sent along with the OTP.
- * Step 2 (verifiedOtp): confirm the OTP with MSG91, then log the matching
- * customer in.
- *
- * MSG91 has two ways to send/verify an OTP. If `MSG91_OTP_TEMPLATE_ID` is
- * set in .env, the Template API is used; otherwise it falls back to the
- * Widget API (`MSG91_WIDGET_ID`).
+ * If `MSG91_OTP_TEMPLATE_ID` is set in .env, the Template API is used;
+ * otherwise it falls back to the Widget API (`MSG91_WIDGET_ID`).
  */
-class AuthController extends Controller
+class CommonController extends Controller
 {
-    public function __construct(private readonly JwtService $jwt)
-    {
-    }
-
-    public function login(Request $request): JsonResponse
+    public function sendOtp(Request $request): JsonResponse
     {
         $request->validate([
             'mobile' => 'required|numeric',
@@ -55,7 +43,7 @@ class AuthController extends Controller
         return ApiResponse::ok(['reqId' => $requestId], 'OTP sent successfully.');
     }
 
-    public function verifiedOtp(Request $request): JsonResponse
+    public function verifyOtp(Request $request): JsonResponse
     {
         $usingTemplate = (bool) config('services.msg91.template_id');
 
@@ -78,84 +66,7 @@ class AuthController extends Controller
             return ApiResponse::error(422, 'OTP_INVALID', 'The OTP you entered is incorrect.');
         }
 
-        $customer = Customer::where('mobile', $mobile)->first();
-
-        if (!$customer) {
-            return ApiResponse::ok([
-                'is_new_user' => true,
-                'mobile' => $mobile,
-            ], 'OTP verified. No account found for this number yet — please complete registration.');
-        }
-
-        return ApiResponse::ok([
-            'is_new_user' => false,
-            'token_type' => 'Bearer',
-            'access_token' => $this->jwt->issueForCustomer($customer->id),
-            'user' => $customer,
-        ], 'OTP verified successfully.');
-    }
-
-    /**
-     * Creates a customer account. Same fields, validation, and response
-     * shape as the original CustomerController@registertion.
-     */
-    public function register(Request $request): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:120',
-            'mobile' => 'required|numeric|min:11|unique:customers',
-            'email' => 'email|unique:customers',
-            'address' => 'required|regex:/(^[-0-9A-Za-z.,\/ ]+$)/',
-            'is_company' => 'required|boolean',
-        ])->sometimes(
-            ['company_name', 'gst_number'],
-            'required|string|max:255',
-            fn ($input) => $input->is_company == 1
-        );
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => false,
-                'message' => $validator->errors()->first(),
-            ]);
-        }
-
-        $customer = new Customer();
-        $customer->name = $request->name;
-        $customer->mobile = $request->mobile;
-        $customer->email = $request->email;
-        $customer->address = $request->address;
-        $customer->company_name = $request->company_name ?? null;
-        $customer->gst_number = $request->gst_number ?? null;
-        $customer->location = $request->location;
-        $customer->signature = $request->signature;
-        $customer->occupation = $request->occupation;
-        $customer->date_of_birth = $request->date_of_birth;
-        $customer->gender = $request->gender;
-
-        if ($request->hasFile('photo')) {
-            $file = $request->file('photo');
-            $filename = 'customer_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move(public_path('uploads/customers'), $filename);
-            $customer->photo = 'uploads/customers/' . $filename;
-        }
-
-        $customer->save();
-
-        Feed::create([
-            'type' => 'customer_joined',
-            'customer_id' => $customer->id,
-        ]);
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Registered Successfully',
-            'data' => [
-                'token_type' => 'Bearer',
-                'access_token' => $this->jwt->issueForCustomer($customer->id),
-                'user' => $customer,
-            ],
-        ]);
+        return ApiResponse::ok(['mobile' => $mobile], 'OTP verified successfully.');
     }
 
     /** Sends the OTP via MSG91's Template API. Returns the request id, or null on failure. */

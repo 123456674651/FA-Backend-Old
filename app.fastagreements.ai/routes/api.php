@@ -29,6 +29,7 @@ use App\Http\Controllers\api\SliderController;
 use App\Http\Controllers\api\SubscriptionApiController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\Api\V2\AuthController as AuthControllerV2;
+use App\Http\Controllers\Api\V2\CommonController as CommonControllerV2;
 use App\Http\Middleware\EnsureMinimumAppVersion;
 use App\Models\Sceme;
 use App\Support\ApiResponse;
@@ -164,6 +165,10 @@ Route::middleware('auth.jwt')->group(function () {
     Route::patch('/customers/allow-prompt', [CustomerController::class, 'updateAllowPrompt']);
 
     Route::post('upload_image', [CustomerController::class, 'upload_image']);
+
+    // Common OTP (v2) - e.g. confirming a new mobile number for an already-signed-in customer
+    Route::post('v2/send-otp', [CommonControllerV2::class, 'sendOtp']);
+    Route::post('v2/verify-otp', [CommonControllerV2::class, 'verifyOtp']);
 
     Route::post('party-verifications/msg91', [PartyVerificationController::class, 'verifyPhone']);
     Route::post('party-verifications/pending', [PartyVerificationController::class, 'pendingForCreation']);
