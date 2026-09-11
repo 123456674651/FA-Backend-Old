@@ -44,7 +44,17 @@ class AuthController extends Controller
 
             $request->session()->regenerate();
 
-            return redirect()->intended(route('dashboard.index'))
+            $redirectUrl = redirect()->intended(route('dashboard.index'))->getTargetUrl();
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Welcome back! You have logged in successfully.',
+                    'redirect' => $redirectUrl,
+                ]);
+            }
+
+            return redirect($redirectUrl)
                 ->with('success', 'Welcome back! You have logged in successfully.');
         }
 

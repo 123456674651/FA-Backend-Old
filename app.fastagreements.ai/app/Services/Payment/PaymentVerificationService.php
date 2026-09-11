@@ -13,9 +13,13 @@ class PaymentVerificationService
     ) {
     }
 
-    public function checkoutSignatureValid(string $razorpayOrderId, string $razorpayPaymentId, string $signature): bool
-    {
-        $expected = hash_hmac('sha256', $razorpayOrderId . '|' . $razorpayPaymentId, $this->keySecret);
+    public function checkoutSignatureValid(
+        string $razorpayOrderId,
+        string $razorpayPaymentId,
+        string $signature,
+        ?string $keySecret = null,
+    ): bool {
+        $expected = hash_hmac('sha256', $razorpayOrderId . '|' . $razorpayPaymentId, $keySecret ?? $this->keySecret);
 
         return $this->matches($expected, $signature);
     }

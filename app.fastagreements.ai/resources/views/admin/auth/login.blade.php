@@ -10,7 +10,6 @@
 
     <!-- Favicons -->
     <link href="{{ asset('assets/img/logo/logo.jpeg') }}" rel="icon">
-    <link href="{{ asset('assets/img/logo/logo.jpeg') }}" rel="apple-touch-icon">
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com" rel="preconnect">
@@ -215,12 +214,26 @@
             outline: none;
         }
 
-        .form-control.is-invalid {
+        .form-control.is-invalid,
+        .was-validated .form-control:invalid {
             border-color: #e0736f;
+            background-image: none;
+            padding-right: 14px;
         }
 
-        .form-control.is-invalid:focus {
+        .form-control.is-invalid:focus,
+        .was-validated .form-control:invalid:focus {
             box-shadow: 0 0 0 4px rgba(224, 115, 111, 0.12);
+        }
+
+        .invalid-feedback {
+            width: auto;
+            font-size: 0.8rem;
+            margin-top: 6px;
+        }
+
+        .invalid-feedback:not(:empty) {
+            display: block;
         }
 
         input:-webkit-autofill,
@@ -348,23 +361,16 @@
         <h1 class="login-title">Welcome Back!</h1>
         <p class="login-subtitle">Sign in to continue to Fast Agreements.</p>
 
-        <!-- Success Message -->
-        @if(session('success'))
-            <div class="alert alert-success alert-custom alert-dismissible fade show border-success text-success" role="alert">
-                <i class="bi bi-check-circle me-1"></i> {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        @endif
+        <!-- Alert Messages (populated on page load and via AJAX) -->
+        <div id="loginAlert"
+            class="alert alert-custom alert-dismissible fade show{{ session('success') ? ' alert-success border-success text-success' : (session('error') ? ' alert-danger border-danger text-danger' : ' d-none') }}"
+            role="alert">
+            <i class="bi {{ session('success') ? 'bi-check-circle' : 'bi-exclamation-triangle' }} me-1" id="loginAlertIcon"></i>
+            <span id="loginAlertText">{{ session('success') ?? session('error') }}</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
 
-        <!-- Error Message -->
-        @if(session('error'))
-            <div class="alert alert-danger alert-custom alert-dismissible fade show border-danger text-danger" role="alert">
-                <i class="bi bi-exclamation-triangle me-1"></i> {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        @endif
-
-        <form method="POST" action="{{ route('login') }}" id="loginForm">
+        <form method="POST" action="{{ route('login') }}" id="loginForm" novalidate>
             @csrf
 
             <!-- Email Address -->
@@ -372,13 +378,9 @@
                 <label for="email" class="form-label">Email address</label>
                 <div class="field">
                     <i class="bi bi-envelope field-icon"></i>
-                    <input type="email" name="email" id="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" placeholder="you@company.com" required autofocus autocomplete="username">
+                    <input type="email" name="email" id="email" class="form-control" value="{{ old('email') }}" placeholder="you@company.com" required autofocus autocomplete="username">
                 </div>
-                @error('email')
-                    <div class="error-message">
-                        <i class="bi bi-exclamation-circle-fill"></i> {{ $message }}
-                    </div>
-                @enderror
+                <div class="invalid-feedback" id="emailError"></div>
             </div>
 
             <!-- Password -->
@@ -386,17 +388,13 @@
                 <label for="password" class="form-label">Password</label>
                 <div class="field">
                     <i class="bi bi-lock field-icon"></i>
-                    <input type="password" name="password" id="password" class="form-control @error('password') is-invalid @enderror" placeholder="••••••••" required autocomplete="current-password">
+                    <input type="password" name="password" id="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
                     <button type="button" class="toggle-password" tabindex="-1" onclick="togglePassword()"><i class="bi bi-eye" id="togglePasswordIcon"></i></button>
                 </div>
+                <div class="invalid-feedback" id="passwordError"></div>
                 <div class="hint-message" id="capsLockHint" style="display: none;">
                     <i class="bi bi-capslock-fill"></i> Caps Lock is on
                 </div>
-                @error('password')
-                    <div class="error-message">
-                        <i class="bi bi-exclamation-circle-fill"></i> {{ $message }}
-                    </div>
-                @enderror
             </div>
 
             <!-- Remember Me -->
@@ -412,11 +410,9 @@
                 </button>
             </div>
 
-            @if($errors->any())
-                <div class="security-note">
-                    <i class="bi bi-shield-lock"></i> For your security, access is monitored. Please check your credentials and try again.
-                </div>
-            @endif
+            <div class="security-note d-none" id="securityNote">
+                <i class="bi bi-shield-lock"></i> For your security, access is monitored. Please check your credentials and try again.
+            </div>
         </form>
 
         <div class="login-footer">
@@ -453,10 +449,105 @@
 
             var form = document.getElementById('loginForm');
             var btn = document.getElementById('signInBtn');
+            var alertBox = document.getElementById('loginAlert');
+            var alertIcon = document.getElementById('loginAlertIcon');
+            var alertText = document.getElementById('loginAlertText');
+            var securityNote = document.getElementById('securityNote');
+            var emailInput = document.getElementById('email');
+            var passwordInput2 = document.getElementById('password');
+            var emailError = document.getElementById('emailError');
+            var passwordError = document.getElementById('passwordError');
+
+            function showAlert(type, message) {
+                alertBox.classList.remove('d-none', 'alert-success', 'alert-danger', 'border-success', 'border-danger', 'text-success', 'text-danger');
+                alertBox.classList.add('alert-' + type, 'border-' + type, 'text-' + type);
+                alertIcon.className = 'bi ' + (type === 'success' ? 'bi-check-circle' : 'bi-exclamation-triangle') + ' me-1';
+                alertText.textContent = message;
+            }
+
+            function hideAlert() {
+                alertBox.classList.add('d-none');
+            }
+
+            function clearFieldErrors() {
+                [emailInput, passwordInput2].forEach(function (el) {
+                    el.classList.remove('is-invalid');
+                });
+                emailError.textContent = '';
+                passwordError.textContent = '';
+                securityNote.classList.add('d-none');
+            }
+
+            function setFieldError(input, errorEl, messages) {
+                input.classList.add('is-invalid');
+                errorEl.textContent = messages[0];
+            }
+
+            function resetButton() {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="btn-label">Sign In</span>';
+            }
+
             if (form && btn) {
-                form.addEventListener('submit', function () {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+
+                    // Bootstrap's built-in (native) validation
+                    if (!form.checkValidity()) {
+                        emailError.textContent = emailInput.validationMessage;
+                        passwordError.textContent = passwordInput2.validationMessage;
+                        form.classList.add('was-validated');
+                        return;
+                    }
+                    form.classList.add('was-validated');
+
+                    clearFieldErrors();
+                    hideAlert();
                     btn.disabled = true;
                     btn.innerHTML = '<span class="btn-spinner"></span><span class="btn-label">Signing in…</span>';
+
+                    var formData = new FormData(form);
+
+                    fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: formData,
+                    })
+                        .then(function (response) {
+                            return response.json().then(function (data) {
+                                return { status: response.status, body: data };
+                            });
+                        })
+                        .then(function (result) {
+                            if (result.status === 200 && result.body.success) {
+                                showAlert('success', result.body.message || 'Logged in successfully.');
+                                window.location.href = result.body.redirect || '/';
+                                return;
+                            }
+
+                            if (result.status === 422 && result.body.errors) {
+                                var errors = result.body.errors;
+                                if (errors.email) {
+                                    setFieldError(emailInput, emailError, errors.email);
+                                }
+                                if (errors.password) {
+                                    setFieldError(passwordInput2, passwordError, errors.password);
+                                }
+                                securityNote.classList.remove('d-none');
+                                resetButton();
+                                return;
+                            }
+
+                            showAlert('danger', (result.body && result.body.message) || 'Something went wrong. Please try again.');
+                            resetButton();
+                        })
+                        .catch(function () {
+                            showAlert('danger', 'Unable to reach the server. Please try again.');
+                            resetButton();
+                        });
                 });
             }
         })();

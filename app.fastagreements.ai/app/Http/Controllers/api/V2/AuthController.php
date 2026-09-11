@@ -105,7 +105,7 @@ class AuthController extends Controller
             'name' => 'required|string|max:120',
             'mobile' => 'required|numeric|min:11|unique:customers',
             'email' => 'email|unique:customers',
-            'address' => 'required|regex:/(^[-0-9A-Za-z.,\/ ]+$)/',
+            'address' => 'required|string',
             'is_company' => 'required|boolean',
         ])->sometimes(
             ['company_name', 'gst_number'],

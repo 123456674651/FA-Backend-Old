@@ -47,8 +47,14 @@ class PaymentOrderService
     /**
      * @return array{payment_required: bool, order?: PaymentOrder, key_id?: string}
      */
-    public function createFor(int $customerId, int $planId, ?string $otpMode): array
-    {
+    public function createFor(
+        int $customerId,
+        int $planId,
+        ?string $otpMode,
+        string $razorpayMode = 'live',
+        ?RazorpayGateway $gateway = null,
+        ?string $keyId = null,
+    ): array {
         $plan = SubscriptionPlan::query()->find($planId);
 
         if ($plan === null || !$plan->is_active) {
@@ -74,17 +80,20 @@ class PaymentOrderService
             return ['payment_required' => false];
         }
 
-        $order = DB::transaction(function () use ($customerId, $plan, $otpMode) {
+        $gateway = $gateway ?? $this->gateway;
+
+        $order = DB::transaction(function () use ($customerId, $plan, $otpMode, $razorpayMode, $gateway) {
             $local = PaymentOrder::create([
                 'customer_id' => $customerId,
                 'subscription_plan_id' => $plan->id,
                 'status' => PaymentOrder::STATUS_CREATED,
                 'amount_paise' => $plan->amountPaise(),
                 'currency' => 'INR',
+                'razorpay_mode' => $razorpayMode,
                 'expires_at' => now()->addMinutes(15),
             ]);
 
-            $gatewayOrderId = $this->gateway->createOrder(
+            $gatewayOrderId = $gateway->createOrder(
                 $local->amount_paise,
                 $local->currency,
                 (string) $local->id,
@@ -104,7 +113,7 @@ class PaymentOrderService
         return [
             'payment_required' => true,
             'order' => $order,
-            'key_id' => (string) config('services.razorpay.key_id'),
+            'key_id' => $keyId ?? (string) config('services.razorpay.key_id'),
         ];
     }
 }

@@ -29,6 +29,7 @@ class PaymentOrder extends Model
         'status',
         'amount_paise',
         'currency',
+        'razorpay_mode',
         'razorpay_order_id',
         'razorpay_payment_id',
         'razorpay_signature',

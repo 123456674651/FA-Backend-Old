@@ -1278,6 +1278,7 @@
 @endsection
 
 @section('js')
+    <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
     <script>
         $(document).ready(function() {
             // Restore Active Tab on page reload from URL Query Parameter

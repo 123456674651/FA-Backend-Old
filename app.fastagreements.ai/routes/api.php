@@ -30,6 +30,7 @@ use App\Http\Controllers\api\SubscriptionApiController;
 use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\api\V2\AuthController as AuthControllerV2;
 use App\Http\Controllers\api\V2\CommonController as CommonControllerV2;
+use App\Http\Controllers\api\V2\PaymentApiController as PaymentApiControllerV2;
 use App\Http\Middleware\EnsureMinimumAppVersion;
 use App\Models\Sceme;
 use App\Support\ApiResponse;
@@ -202,6 +203,10 @@ Route::middleware('auth.jwt')->group(function () {
     Route::get('subscription/status/{customer_id}', [SubscriptionApiController::class, 'status']);
     Route::post('payment/order', [PaymentApiController::class, 'createOrder']);
     Route::post('payment/verify', [PaymentApiController::class, 'verify']);
+    // v2 - caller names 'test' or 'live' Razorpay keys per order
+    Route::post('v2/payment/key', [PaymentApiControllerV2::class, 'razorypayCredentials']);
+    Route::post('v2/payment/order', [PaymentApiControllerV2::class, 'createOrder']);
+    Route::post('v2/payment/verify', [PaymentApiControllerV2::class, 'verify']);
     Route::get('subscription-invoices/pdf-url/{id}', [InvoiceController::class, 'getInvoicePdfUrl']);
     Route::get('subscription-invoices/view/{id}', [InvoiceController::class, 'viewPdf']);
     Route::get('subscription-invoices/download/{id}', [InvoiceController::class, 'downloadPdf']);
