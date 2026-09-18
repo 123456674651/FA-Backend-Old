@@ -82,7 +82,7 @@ class AuthController extends BaseController
             'otp' => 'required|numeric',
             'reqId' => $usingTemplate ? 'nullable|string' : 'required|string',
             'device_id' => 'nullable|string',
-            'fcm_token' => 'nullable|string',
+            'device_token' => 'nullable|string',
             'device_type' => 'nullable|string|in:android,ios,web',
             'device_name' => 'nullable|string',
             'app_version' => 'nullable|string',
@@ -143,7 +143,7 @@ class AuthController extends BaseController
             'email' => 'email|unique:users',
             'address' => 'required|string',
             'is_company' => 'required|boolean',
-            'fcm_token' => 'nullable|string',
+            'device_token' => 'nullable|string',
             'device_type' => 'nullable|string|in:android,ios,web',
             'device_name' => 'nullable|string',
         ])->sometimes(
@@ -208,12 +208,12 @@ class AuthController extends BaseController
     public function logout(Request $request): JsonResponse
     {
         $user = $request->user();
-        $fcmToken = $request->input('fcm_token');
+        $deviceToken = $request->input('device_token');
 
         if ($user) {
             $query = UserToken::where('user_id', $user->id);
-            if ($fcmToken) {
-                $query->where('fcm_token', $fcmToken);
+            if ($deviceToken) {
+                $query->where('fcm_token', $deviceToken);
             }
             $query->delete();
         }
@@ -226,12 +226,12 @@ class AuthController extends BaseController
      */
     private function syncUserToken(User $user, Request $request, ?string $accessToken = null): void
     {
-        $fcmToken = $request->input('fcm_token');
+        $deviceToken = $request->input('device_token');
 
         UserToken::create([
             'user_id' => $user->id,
             'access_token' => $accessToken,
-            'fcm_token' => $fcmToken,
+            'fcm_token' => $deviceToken,
             'device_type' => $request->input('device_type', 'android'),
             'last_active_at' => now(),
         ]);
