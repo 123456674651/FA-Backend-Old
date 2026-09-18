@@ -8,12 +8,16 @@ use Intervention\Image\Drivers\Gd\Driver as DriverGd;
 
 trait ImageResizer
 {
-    public function image_resize($image, $folder)
+    public function image_resize($image, $folder, $customName = null)
     {
         $thumb = $folder . "_thumb";
 
         if ($image) {
-            $imageName = time() . '_' . $image->getClientOriginalName();
+            $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
+            $extension = $image->getClientOriginalExtension();
+            $safeName = \Illuminate\Support\Str::slug($originalName) . '.' . $extension;
+
+            $imageName = $customName ? $customName : time() . '_' . $safeName;
             $destinationPath = public_path('admin/images/' . $thumb . "/" . $imageName);
             $originalPath = public_path('admin/images/' . $folder . "/" . $imageName);
 
@@ -22,9 +26,9 @@ trait ImageResizer
             $image->save($originalPath);
 
             $requiredSize = 1500;
-          //$vehicle = array("vehicle_front_side", "vehicle_back_side", "vehicle_left_side", "vehicle_right_side");
-          	if ($folder === 'vehicle_images') {
-            	$requiredSize = 900;
+            //$vehicle = array("vehicle_front_side", "vehicle_back_side", "vehicle_left_side", "vehicle_right_side");
+            if ($folder === 'vehicle_images') {
+                $requiredSize = 900;
             }
             $width = $image->width();
             $height = $image->height();

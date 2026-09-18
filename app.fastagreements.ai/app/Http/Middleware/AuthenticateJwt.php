@@ -42,21 +42,36 @@ class AuthenticateJwt
             return ApiResponse::error(401, $code, $e->getMessage());
         }
 
-        $customer = Customer::find((int) $claims['sub']);
+        if (isset($claims['type']) && $claims['type'] === 'user') {
+            $user = \App\Models\User::find((int) $claims['sub']);
 
-        if ($customer === null) {
-            // The account was deleted after the token was issued.
-            return ApiResponse::error(401, 'UNAUTHENTICATED', 'This account no longer exists.');
+            if ($user === null) {
+                return ApiResponse::error(401, 'UNAUTHENTICATED', 'This account no longer exists.');
+            }
+
+            if (isset($user->status) && $user->status == 0) {
+                return ApiResponse::error(403, 'ACCOUNT_DISABLED', 'This account has been disabled.');
+            }
+
+            $request->setUserResolver(fn () => $user);
+            Auth::guard('customer')->setUser($user);
+        } else {
+            $customer = Customer::find((int) $claims['sub']);
+
+            if ($customer === null) {
+                // The account was deleted after the token was issued.
+                return ApiResponse::error(401, 'UNAUTHENTICATED', 'This account no longer exists.');
+            }
+
+            if (!$customer->is_active) {
+                return ApiResponse::error(403, 'ACCOUNT_DISABLED', 'This account has been disabled.');
+            }
+
+            // Both are set so downstream code can use whichever reads better:
+            // `$request->user()` in controllers, `auth('customer')->id()` in services.
+            $request->setUserResolver(fn () => $customer);
+            Auth::guard('customer')->setUser($customer);
         }
-
-        if (!$customer->is_active) {
-            return ApiResponse::error(403, 'ACCOUNT_DISABLED', 'This account has been disabled.');
-        }
-
-        // Both are set so downstream code can use whichever reads better:
-        // `$request->user()` in controllers, `auth('customer')->id()` in services.
-        $request->setUserResolver(fn () => $customer);
-        Auth::guard('customer')->setUser($customer);
 
         return $next($request);
     }

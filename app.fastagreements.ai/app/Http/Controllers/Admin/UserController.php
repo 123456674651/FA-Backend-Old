@@ -17,44 +17,34 @@ class UserController extends Controller
     {
 
         if ($request->ajax()) {
-            $query = Admin::query();
+            $query = Admin::select(['id', 'name', 'email', 'image', 'role', 'status', 'created_at']);
+            $defaultImage = asset('assets/img/logo/logo.jpeg');
 
             return DataTables::of($query)
                 ->addIndexColumn()
-                ->addColumn('profile', function ($row) {
-                    $src = $row->image ? asset($row->image) : asset('assets/img/logo/logo.jpeg');
-                    return '<img src="' . $src . '" alt="' . e($row->name) . '" style="height:40px;width:40px;border-radius:50%;object-fit:cover;">';
+                ->editColumn('name', function ($row) use ($defaultImage) {
+                    $src = $row->image ? asset($row->image) : $defaultImage;
+                    $img = '<img src="' . $src . '" alt="' . e($row->name) . '" style="height:40px;width:40px;border-radius:50%;object-fit:cover;margin-right:10px;">';
+                    $nameLink = '<a href="javascript:void(0);" class="text-primary text-decoration-none user-name-link" style="font-weight: 500; font-family: \'Inter\', sans-serif;" data-id="' . $row->id . '">' . e($row->name) . '</a>';
+                    return '<div class="d-flex align-items-center">' . $img . $nameLink . '</div>';
                 })
                 ->editColumn('created_at', function ($row) {
-                    return $row->created_at ? $row->created_at->format('Y-m-d') : 'N/A';
+                    return $row->created_at ? $row->created_at->timezone('Asia/Kolkata')->format('d M, Y h:i A') : 'N/A';
                 })
                 ->addColumn('role', function ($row) {
                     return $row->role === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin';
                 })
-               ->addColumn('status', function ($row) {
-    $badge = $row->status == 1
-        ? '<span class="badge bg-success">Active</span>'
-        : '<span class="badge bg-danger">Inactive</span>';
+                ->addColumn('status', function ($row) {
+                    $badge = $row->status == 1
+                        ? '<span class="badge rounded-pill" style="background-color: rgba(10, 179, 156, 0.1); color: #0ab39c; font-weight: 500; font-size: 11px; padding: 4px 8px;">Active</span>'
+                        : '<span class="badge rounded-pill" style="background-color: rgba(240, 101, 72, 0.1); color: #f06548; font-weight: 500; font-size: 11px; padding: 4px 8px;">Inactive</span>';
 
-    return '<a href="#" class="toggle-status"
-                data-id="' . $row->id . '"
-                data-status="' . $row->status . '"
-                style="text-decoration:none;">' . $badge . '</a>';
-})
-                ->addColumn('action', function ($row) {
-                    $edit = route('users.edit', $row->id);
-                    $show = route('users.show', $row->id);
-                    $del = route('users.destroy', $row->id);
-                    $csrf = csrf_token();
-                    return '<a href="' . $show . '" class="btn btn-info btn-sm me-1"><i class="bi bi-eye"></i></a>' .
-                           '<a href="' . $edit . '" class="edit btn btn-primary btn-sm"><i class="bi bi-pencil-square"></i></a>' .
-                           '<a data-bs-toggle="modal" href="#delete_modal_' . $row->id . '" class="btn btn-danger btn-sm"><i class="bi bi-trash"></i></a>' .
-                           '<div id="delete_modal_' . $row->id . '" class="modal fade" tabindex="-1">' .
-                           '<div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h4 class="modal-title">Confirm</h4><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>' .
-                           '<div class="modal-body"><p>Are you sure you want to delete this admin?</p></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>' .
-                           '<form action="' . $del . '" method="POST" style="display:inline;"><input type="hidden" name="_token" value="' . $csrf . '"><input type="hidden" name="_method" value="DELETE"><button type="submit" class="btn btn-danger">Yes, delete</button></form></div></div></div></div>';
+                    return '<a href="#" class="toggle-status" data-id="' . $row->id . '" data-status="' . $row->status . '" style="text-decoration:none;">' . $badge . '</a>';
                 })
-                ->rawColumns(['profile', 'status', 'action'])
+                ->addColumn('action', function ($row) {
+                    return view('admin.users.action', compact('row'))->render();
+                })
+                ->rawColumns(['name', 'status', 'action'])
                 ->make(true);
         }
 
@@ -79,8 +69,22 @@ class UserController extends Controller
             $admin->status = $request->has('status') ? (bool) $data['status'] : true;
             $admin->save();
 
+            if ($request->ajax()) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Admin created successfully!',
+                    'redirect' => route('users.index')
+                ]);
+            }
+
             return redirect()->route('users.index')->with('success', 'Admin created successfully!');
         } catch (Exception $e) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Error creating admin: ' . $e->getMessage()
+                ], 500);
+            }
             return redirect()->back()->with('error', 'Error creating admin: ' . $e->getMessage())->withInput();
         }
     }

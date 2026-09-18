@@ -27,11 +27,8 @@ class CmsPageResource extends JsonResource
             'status' => $this->status,
         ];
 
-        // Format and conditionally include timestamps
-        if ($request->routeIs('api.cms-pages.index') || $request->is('*api/cms-pages')) {
-            $data['created_at'] = $this->created_at ? $this->created_at->toDateTimeString() : null;
-            $data['updated_at'] = $this->updated_at ? $this->updated_at->toDateTimeString() : null;
-        }
+        $data['created_at'] = $this->created_at ? $this->created_at->toDateTimeString() : null;
+        $data['updated_at'] = $this->updated_at ? $this->updated_at->toDateTimeString() : null;
 
         return $data;
     }

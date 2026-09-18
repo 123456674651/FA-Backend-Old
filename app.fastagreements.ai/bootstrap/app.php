@@ -18,6 +18,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->redirectTo(
+            guests: '/admin/login',
+            users: '/admin/dashboard'
+        );
+
         $middleware->alias([
             'auth.jwt' => AuthenticateJwt::class,
             'app.version' => EnsureMinimumAppVersion::class,
@@ -27,6 +32,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // MIN_APP_VERSION is set, and it must run before auth so an old build
         // is told to update rather than told it is unauthenticated.
         $middleware->appendToGroup('api', EnsureMinimumAppVersion::class);
+
+        // Global API Logger
+        $middleware->appendToGroup('api', \App\Http\Middleware\ApiLoggerMiddleware::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Registered ahead of the general PhoneVerificationException handler

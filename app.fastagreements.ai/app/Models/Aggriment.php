@@ -11,7 +11,15 @@ class Aggriment extends Model
 
    protected $table = 'agreements';
 
-   protected $appends = ['party_one_image_url', 'party_two_image_url'];
+   protected $appends = [
+      'party_one_image_url', 
+      'party_two_image_url',
+      'documents_url',
+      'vehicle_front_side_url',
+      'vehicle_back_side_url',
+      'vehicle_left_side_url',
+      'vehicle_right_side_url'
+   ];
 
 
    public function party1()
@@ -22,6 +30,16 @@ class Aggriment extends Model
    public function party2()
    {
       return $this->belongsTo(Customer::class, 'party_2_id', 'id');
+   }
+
+   public function user1()
+   {
+      return $this->belongsTo(User::class, 'party_1_id', 'id');
+   }
+
+   public function user2()
+   {
+      return $this->belongsTo(User::class, 'party_2_id', 'id');
    }
 
    public function category()
@@ -64,6 +82,31 @@ class Aggriment extends Model
    {
       return asset('admin/images/person_images_thumb/' . $this->party_2_image);
 
+   }
+
+   public function getDocumentsUrlAttribute()
+   {
+      return $this->documents ? asset('agreement_pdfs/' . $this->documents) : null;
+   }
+
+   public function getVehicleFrontSideUrlAttribute()
+   {
+      return $this->vehicle_front_side ? asset('admin/images/vehicle_images/' . $this->vehicle_front_side) : null;
+   }
+
+   public function getVehicleBackSideUrlAttribute()
+   {
+      return $this->vehicle_back_side ? asset('admin/images/vehicle_images/' . $this->vehicle_back_side) : null;
+   }
+
+   public function getVehicleLeftSideUrlAttribute()
+   {
+      return $this->vehicle_left_side ? asset('admin/images/vehicle_images/' . $this->vehicle_left_side) : null;
+   }
+
+   public function getVehicleRightSideUrlAttribute()
+   {
+      return $this->vehicle_right_side ? asset('admin/images/vehicle_images/' . $this->vehicle_right_side) : null;
    }
   
    public function invoice()

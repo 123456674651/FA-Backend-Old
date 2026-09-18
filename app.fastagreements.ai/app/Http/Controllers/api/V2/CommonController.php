@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V2;
 
+use App\Http\Controllers\api\BaseController;
 use App\Http\Controllers\Controller;
 use App\Support\ApiResponse;
 use App\Support\MobileNumber;
@@ -20,7 +21,7 @@ use Illuminate\Support\Facades\Log;
  * If `MSG91_OTP_TEMPLATE_ID` is set in .env, the Template API is used;
  * otherwise it falls back to the Widget API (`MSG91_WIDGET_ID`).
  */
-class CommonController extends Controller
+class CommonController extends BaseController
 {
     public function sendOtp(Request $request): JsonResponse
     {
@@ -172,5 +173,10 @@ class CommonController extends Controller
             'mobile' => $mobile,
             'error' => $e->getMessage(),
         ]);
+    }
+
+    public function languageButtons(Request $request)
+    {
+        return $this->sendResponse(['button' => "SHOW"], 'Language button configuration.');
     }
 }

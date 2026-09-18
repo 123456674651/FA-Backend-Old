@@ -33,7 +33,7 @@ class DealController extends Controller
             for ($i = 1; $i <= $termInMonths; $i++) {
                 $dueDate = $startDate->copy()->addMonths($i);
                 $amountDue = round($payableAmount / $termInMonths, 2); // Round to 2 decimal places
-                
+
                 // Check if the due date has passed
                 $isOverdue = $currentDate->greaterThan($dueDate);
                 $actualAmountDue = $isOverdue ? $amountDue : $amountDue; // You may adjust this logic if overdue amounts should be different
@@ -73,71 +73,71 @@ class DealController extends Controller
             ], 500); // 500 Internal Server Error
         }
     }
-  public function partyWiseAggrimentsApi(Request $request, $id): JsonResponse
-{
-    
-    try {
+    public function partyWiseAggrimentsApi(Request $request, $id): JsonResponse
+    {
 
-        // ✅ Pagination values
-        $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
-        $page    = $request->page ?? 1;
-        $isDraft = $request->boolean('is_draft');
+        try {
 
-        if ((int) $request->user()->id !== (int) $id) {
+            // ✅ Pagination values
+            $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
+            $page = $request->page ?? 1;
+            $isDraft = $request->boolean('is_draft');
+
+            if ((int) $request->user()->id !== (int) $id) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'You can only view your own agreements.',
+                ], 403);
+            }
+
+            // ✅ Fetch paginated agreements
+            $agreements = Aggriment::with(['party1', 'party2', 'category'])
+                ->where(function ($query) use ($id) {
+                    $query->where('party_1_id', $id)
+                        ->orWhere('party_2_id', $id);
+                })
+                ->where('is_draft', $isDraft)
+                ->orderBy('id', 'desc')
+                ->paginate($perPage, ['*'], 'page', $page);
+
+            // ✅ Empty check
+            if ($agreements->isEmpty()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No agreements found for this party.',
+                    'data' => []
+                ], 404);
+            }
+
+            // ✅ Success response with pagination meta
+            return response()->json([
+                'status' => true,
+                'message' => 'Party-wise agreements fetched successfully.',
+                'data' => $agreements->items(),
+
+                'pagination' => [
+                    'current_page' => $agreements->currentPage(),
+                    'per_page' => $agreements->perPage(),
+                    'total' => $agreements->total(),
+                    'last_page' => $agreements->lastPage(),
+                    'from' => $agreements->firstItem(),
+                    'to' => $agreements->lastItem(),
+                ]
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            Log::error('PartyWiseAggriments API Error', [
+                'party_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+
             return response()->json([
                 'status' => false,
-                'message' => 'You can only view your own agreements.',
-            ], 403);
+                'message' => 'Internal server error.'
+            ], 500);
         }
-
-        // ✅ Fetch paginated agreements
-        $agreements = Aggriment::with(['party1', 'party2', 'category'])
-            ->where(function ($query) use ($id) {
-                $query->where('party_1_id', $id)
-                      ->orWhere('party_2_id', $id);
-            })
-            ->where('is_draft', $isDraft)
-            ->orderBy('id', 'desc')
-            ->paginate($perPage, ['*'], 'page', $page);
-
-        // ✅ Empty check
-        if ($agreements->isEmpty()) {
-            return response()->json([
-                'status'  => false,
-                'message' => 'No agreements found for this party.',
-                'data'    => []
-            ], 404);
-        }
-
-        // ✅ Success response with pagination meta
-        return response()->json([
-            'status'     => true,
-            'message'    => 'Party-wise agreements fetched successfully.',
-            'data'       => $agreements->items(),
-
-            'pagination' => [
-                'current_page' => $agreements->currentPage(),
-                'per_page'     => $agreements->perPage(),
-                'total'        => $agreements->total(),
-                'last_page'    => $agreements->lastPage(),
-                'from'         => $agreements->firstItem(),
-                'to'           => $agreements->lastItem(),
-            ]
-        ], 200);
-
-    } catch (\Throwable $e) {
-
-        Log::error('PartyWiseAggriments API Error', [
-            'party_id' => $id,
-            'error'    => $e->getMessage()
-        ]);
-
-        return response()->json([
-            'status'  => false,
-            'message' => 'Internal server error.'
-        ], 500);
     }
-}
 
- 
+
 }

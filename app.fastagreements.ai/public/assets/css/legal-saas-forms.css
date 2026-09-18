@@ -1,0 +1,94 @@
+/* =========================================================
+   LEGAL-SAAS PREMIUM FORM STYLING
+   ========================================================= */
+
+.legal-form {
+    font-family: 'Inter', 'Poppins', sans-serif !important;
+}
+
+/* Base Form Control */
+.legal-form .form-control,
+.legal-form .form-select {
+    font-size: 13px !important;
+    padding: 10px 14px !important;
+    border-radius: 8px !important;
+    border: 1px solid #D7E0EE !important;
+    color: #253858 !important;
+    background-color: #FFFFFF !important;
+    transition: all 0.2s ease-in-out !important;
+    box-shadow: none !important;
+}
+
+/* Dropdown arrow fix for select */
+.legal-form .form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23667085' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 12px center !important;
+    background-size: 12px 10px !important;
+    padding-right: 36px !important;
+}
+
+/* Focus State */
+.legal-form .form-control:focus,
+.legal-form .form-select:focus {
+    border-color: #3458A4 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(52, 88, 164, 0.15) !important;
+}
+
+/* Labels */
+.legal-form .form-label {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #14213A !important;
+    margin-bottom: 8px !important;
+}
+
+/* Asterisk (Required) */
+.legal-form .form-label .text-danger {
+    color: #E5484D !important;
+    margin-left: 2px !important;
+}
+
+/* Invalid State */
+.legal-form .form-control.is-invalid,
+.legal-form .form-select.is-invalid {
+    border-color: #E5484D !important;
+    background-image: none !important; /* Disable bootstrap's default warning icon to keep it clean */
+}
+
+.legal-form .form-control.is-invalid:focus,
+.legal-form .form-select.is-invalid:focus {
+    box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.15) !important;
+}
+
+/* Invalid Feedback */
+.legal-form .invalid-feedback {
+    display: block !important;
+    font-size: 12px !important;
+    color: #E5484D !important;
+    margin-top: 6px !important;
+    font-weight: 500 !important;
+}
+
+/* Card overrides specifically inside legal-form */
+.legal-form .card {
+    background-color: #FFFFFF !important;
+    border: 1px solid #E4EAF3 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 16px rgba(20, 33, 58, 0.06) !important;
+    margin-bottom: 24px !important;
+}
+.legal-form .card-body {
+    padding: 24px !important;
+}
+
+/* Row gutters override for forms */
+.legal-form .g-4, 
+.legal-form .gy-4 {
+    --bs-gutter-y: 1.5rem !important;
+}
+.legal-form .g-4, 
+.legal-form .gx-4 {
+    --bs-gutter-x: 1.5rem !important;
+}

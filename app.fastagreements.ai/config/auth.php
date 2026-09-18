@@ -14,8 +14,8 @@ return [
     */
 
     'defaults' => [
-        'guard' => env('AUTH_GUARD', 'web'),
-        'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
+        'guard' => env('AUTH_GUARD', 'admin'),
+        'passwords' => env('AUTH_PASSWORD_BROKER', 'admins'),
     ],
 
     /*
@@ -39,6 +39,11 @@ return [
         // Session guard for the admin panel. Backed by the `admins` table,
         // kept separate from the `users` table.
         'web' => [
+            'driver' => 'session',
+            'provider' => 'admins',
+        ],
+
+        'admin' => [
             'driver' => 'session',
             'provider' => 'admins',
         ],

@@ -2,7 +2,7 @@
 
 namespace App\Services\Auth;
 
-use App\Models\Customer;
+use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\TokenExpiredException;
 use PHPOpenSourceSaver\JWTAuth\Exceptions\JWTException;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
@@ -25,7 +25,14 @@ class JwtService
     /** Thrown for anything else: bad signature, wrong issuer, malformed. */
     public const FAILURE_INVALID = 'invalid';
 
-    public function issueForCustomer(Customer $customer): string
+    /**
+     * @param JWTSubject $customer Almost always a Customer. Widened to the
+     *   JWTSubject interface (rather than the concrete Customer class) so
+     *   the newly-registered User accounts from the V2 register endpoint
+     *   can also be issued a token without changing how Customer tokens
+     *   are verified elsewhere.
+     */
+    public function issueForCustomer(JWTSubject $customer): string
     {
         return JWTAuth::fromUser($customer);
     }
@@ -47,7 +54,8 @@ class JwtService
             throw new JwtVerificationException(self::FAILURE_INVALID, 'Session token is not valid.');
         }
 
-        if (($claims['type'] ?? null) !== self::TYPE_CUSTOMER) {
+        $type = $claims['type'] ?? null;
+        if ($type !== self::TYPE_CUSTOMER && $type !== 'user') {
             throw new JwtVerificationException(self::FAILURE_INVALID, 'Session token is not valid.');
         }
 

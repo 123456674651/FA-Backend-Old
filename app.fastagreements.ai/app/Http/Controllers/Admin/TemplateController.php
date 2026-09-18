@@ -15,7 +15,8 @@ use App\Models\CategoryAttribute;
 
 class TemplateController extends Controller
 {
-    public function index(){
+    public function index()
+    {
         if (request()->ajax()) {
             $data = CategoryLanguage::with('dealCategory', 'languages')->get(); // Eager load relationship
             return DataTables::of($data)
@@ -23,7 +24,7 @@ class TemplateController extends Controller
                 ->addColumn('category_name', function ($row) {
                     return $row->dealCategory ? $row->dealCategory->category_name : 'N/A';
                 })
-                ->addColumn('language_name', function ($row){
+                ->addColumn('language_name', function ($row) {
                     return $row->languages ? $row->languages->language_name : 'N/A';
                 })
                 ->addColumn('action', function ($template) {
@@ -59,11 +60,11 @@ class TemplateController extends Controller
                         </div>
                     </div>';
                 })
-               ->addColumn('template', function ($dealCategory) {
+                ->addColumn('template', function ($dealCategory) {
                     $duplicateUrl = route('emplate.duplicate.entry', $dealCategory->id);
 
                     return '<div class="text-center">
-                        <a data-bs-toggle="modalx" href="https://gnhub.net/fast-agreement/public/api/agreement?persone_1_id=38&persone_2_id=38&rent=5000&deposite=15000&start_date=16-11-2024&duration=11&view=1&lang='. $dealCategory->language_code.'&category_id='. $dealCategory->category_id.'&language_id='. $dealCategory->language_id.'" class="btn btn-danger btn-sm" title="Delete">
+                        <a data-bs-toggle="modalx" href="https://gnhub.net/fast-agreement/public/api/agreement?persone_1_id=38&persone_2_id=38&rent=5000&deposite=15000&start_date=16-11-2024&duration=11&view=1&lang=' . $dealCategory->language_code . '&category_id=' . $dealCategory->category_id . '&language_id=' . $dealCategory->language_id . '" class="btn btn-danger btn-sm" title="Delete">
                             <i class="bi bi-eye"></i>
                         </a>
 
@@ -76,9 +77,9 @@ class TemplateController extends Controller
                     </div>';
                 })
                 ->addColumn('background', function ($dealCategory) {
-    $toggleUrl = route('news_toggleStatus', $dealCategory->id);
+                    $toggleUrl = route('news_toggleStatus', $dealCategory->id);
 
-    return '<form action="' . $toggleUrl . '" method="POST">
+                    return '<form action="' . $toggleUrl . '" method="POST">
                 ' . csrf_field() . '
                 ' . method_field('PATCH') . '
 
@@ -88,20 +89,21 @@ class TemplateController extends Controller
                     <span class="slider round"></span>
                 </label>
             </form>';
-})
+                })
 
-                
+
                 ->rawColumns(['action', 'template', 'background'])
                 ->make(true);
         }
         return view('admin.templates.index');
     }
 
-    public function create(){
-      
-        $dealCategories = DealCategory::all(); 
+    public function create()
+    {
+
+        $dealCategories = DealCategory::all();
         $languages = Language::where('is_active', 1)->orderBy('language_name')->get();
-         $attributes = [
+        $attributes = [
             '@party_one_name',
             '@party_one_address',
             '@party_one_number',
@@ -125,13 +127,14 @@ class TemplateController extends Controller
 
 
 
-        return view('admin.templates.create', compact( 'dealCategories', 'languages','attributes'));
+        return view('admin.templates.create', compact('dealCategories', 'languages', 'attributes'));
     }
 
-    public function store(Request $request){
-       
-          // Validate the incoming request data
-          $validator = Validator::make($request->all(), [
+    public function store(Request $request)
+    {
+
+        // Validate the incoming request data
+        $validator = Validator::make($request->all(), [
             'category_id' => 'required',
             'language_id' => 'required',
             'description' => 'required',
@@ -148,18 +151,19 @@ class TemplateController extends Controller
         $dealCategories->agreement_text = $request->description;
         $dealCategories->save();
 
-        
+
 
 
         return redirect()->back()->with('success', 'Tamplate added successfully!');
 
     }
 
-    public function edit($id){
+    public function edit($id)
+    {
         $template = CategoryLanguage::find($id);
-        $dealCategories = DealCategory::all(); 
+        $dealCategories = DealCategory::all();
         $languages = Language::where('is_active', 1)->orderBy('language_name')->get();
-         $attributes = [
+        $attributes = [
             '@party_one_name',
             '@party_one_address',
             '@party_one_number',
@@ -180,77 +184,78 @@ class TemplateController extends Controller
             '@address',
             '@note',
         ];
-        
+
         $category_attributes = CategoryAttribute::where('category_id', $template->category_id)->where('is_active', 1)->pluck('attribute_code');
 
-        
-        return view('admin.templates.edit', compact('template','dealCategories','languages', 'attributes', 'category_attributes'));
+
+        return view('admin.templates.edit', compact('template', 'dealCategories', 'languages', 'attributes', 'category_attributes'));
     }
 
     public function update(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'category_id' => 'required',
-        'language_id' => 'required',
-        'description' => 'required',
-    ]);
-
-    if ($validator->fails()) {
-        return redirect()->back()->withErrors($validator)->withInput();
-    }
-
-    $dealCategories = CategoryLanguage::findOrFail($request->id);
-
-    $dealCategories->category_id = $request->category_id;
-    $dealCategories->language_id = $request->language_id;
-    $dealCategories->agreement_text = $request->description;
-
-    $dealCategories->save();
-
-    return redirect()->back()->with('success', 'Template updated successfully!');
-}
-
-public function duplicateEntry($id)
-{
-
-    $originalEntry = CategoryLanguage::find($id);
-
-    if (!$originalEntry) {
-        return redirect()->back()->with('error', 'Entry not found.');
-    }
-
-    // Create a duplicate
-    $newEntry = $originalEntry->replicate();
-    $newEntry->save();
-
-    return view('admin.templates.index');
-}
-
-public function show($id){
-
-    $show = CategoryLanguage::find($id);
-
-    $show->agreement_text = str_replace('@name', $show->language_name, $show->agreement_text);
-
-
-    return view('admin.templates.show', compact('show'));
-}
-
-public function delete($id)
-{
-    $originalEntry = CategoryLanguage::find($id);
-    if (!$originalEntry) {
-        return redirect()->back()->with('error', 'Entry not found.');
-    }
-
-    $originalEntry->delete();
-
-    return redirect()->back()->with('success', 'Entry deleted successfully!');
-}
-
-public function toggleStatus($id)
     {
-        $NewsAndNotification =CategoryLanguage::findOrFail($id);
+        $validator = Validator::make($request->all(), [
+            'category_id' => 'required',
+            'language_id' => 'required',
+            'description' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $dealCategories = CategoryLanguage::findOrFail($request->id);
+
+        $dealCategories->category_id = $request->category_id;
+        $dealCategories->language_id = $request->language_id;
+        $dealCategories->agreement_text = $request->description;
+
+        $dealCategories->save();
+
+        return redirect()->back()->with('success', 'Template updated successfully!');
+    }
+
+    public function duplicateEntry($id)
+    {
+
+        $originalEntry = CategoryLanguage::find($id);
+
+        if (!$originalEntry) {
+            return redirect()->back()->with('error', 'Entry not found.');
+        }
+
+        // Create a duplicate
+        $newEntry = $originalEntry->replicate();
+        $newEntry->save();
+
+        return view('admin.templates.index');
+    }
+
+    public function show($id)
+    {
+
+        $show = CategoryLanguage::find($id);
+
+        $show->agreement_text = str_replace('@name', $show->language_name, $show->agreement_text);
+
+
+        return view('admin.templates.show', compact('show'));
+    }
+
+    public function delete($id)
+    {
+        $originalEntry = CategoryLanguage::find($id);
+        if (!$originalEntry) {
+            return redirect()->back()->with('error', 'Entry not found.');
+        }
+
+        $originalEntry->delete();
+
+        return redirect()->back()->with('success', 'Entry deleted successfully!');
+    }
+
+    public function toggleStatus($id)
+    {
+        $NewsAndNotification = CategoryLanguage::findOrFail($id);
 
         $NewsAndNotification->is_active = !$NewsAndNotification->is_active;
         $NewsAndNotification->save();

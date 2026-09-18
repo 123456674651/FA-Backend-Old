@@ -11,6 +11,7 @@ use App\Models\CategoryAttribute;
 use App\Models\Installment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Log;
 use Mpdf\Mpdf;
 use Illuminate\Support\Carbon;
 use Dompdf\Options;
@@ -119,22 +120,22 @@ class PDFController extends Controller
         ]);
     }
 
-// working  function for pdf
+    // working  function for pdf
     public function printAffidavit(Request $request)
     {
 
-$fmt = new \NumberFormatter(app()->getLocale(), \NumberFormatter::SPELLOUT);
-$amount_in_word = ucfirst($fmt->format(1000));
-// dd($amount_in_word);
+        $fmt = new \NumberFormatter(app()->getLocale(), \NumberFormatter::SPELLOUT);
+        $amount_in_word = ucfirst($fmt->format(1000));
+        // dd($amount_in_word);
         // dd($request->person1_signature);
         $persone_1 = $request->persone_1_id;
         $persone_2 = $request->persone_2_id;
 
         $rent = $request->rent;
         $deposite = $request->deposite;
-        $duration = (int)$request->duration;
+        $duration = (int) $request->duration;
         $startDate = $request->start_date;
-        $language =  $request->lang;
+        $language = $request->lang;
         $category_id = $request->category_id;
         // dd($category_id);
         $current_date = Carbon::now();
@@ -271,9 +272,9 @@ $amount_in_word = ucfirst($fmt->format(1000));
 
         $rent = $request->rent;
         $deposite = $request->deposite;
-        $duration = (int)$request->duration;
+        $duration = (int) $request->duration;
         $startDate = $request->start_date;
-        $language =  $request->lang;
+        $language = $request->lang;
         $category_id = $request->category_id;
         // dd($category_id);
         $current_date = Carbon::now();
@@ -407,370 +408,370 @@ $amount_in_word = ucfirst($fmt->format(1000));
 
     public function create_aggriment(Request $request)
     {
-       
-       try {
-        $party_1 = $request->party_1_id;
-        $party_2 = $request->party_2_id;
-        $path = public_path('assets/img/dfer.jpg');
+        Log::info("create_aggriment", $request->all());
+        try {
+            $party_1 = $request->party_1_id;
+            $party_2 = $request->party_2_id;
+            $path = public_path('assets/img/dfer.jpg');
 
-        // validation start
-        $validator = validator::make($request->all(), [
-            'party_1_id' => 'required',
-            'party_2_id' => 'required',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => true,
-                'message' => 'Validation Fail',
-                'errors' => $validator->errors()
-            ], 400);
-        }
-
-        // validation end
-
-        // fatch data from customers table  
-
-        $persons = Customer::where('is_active', 1);
-
-        $person1 = (clone $persons)->where('id', $party_1)->first();
-
-        if (!$person1) {
-            return response()->json([
-                'status' => false,
-                'message' => 'party one  not found'
+            // validation start
+            $validator = validator::make($request->all(), [
+                'party_1_id' => 'required',
+                'party_2_id' => 'required',
             ]);
-        }
 
-        $person2 = (clone $persons)->where('id', $party_2)->first();
-        // dd($person2);
-        if (!$person2) {
-            return response()->json([
-                'status' => false,
-                'message' => 'party  two not found'
-            ]);
-        }
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Validation Fail',
+                    'errors' => $validator->errors()
+                ], 400);
+            }
 
-        // ---- Caller, OTP tier and plan entitlement -------------------------
-        //
-        // This is the older twin of PhpWordController@create_aggriment and is
-        // still routed, so it carries the same gates — guarding only the /v1
-        // endpoint would leave this one as a way around both of them.
+            // validation end
 
-        $caller = $request->user();
-        $callerId = (int) $caller->id;
+            // fatch data from customers table  
 
-        if ($callerId !== (int) $party_1 && $callerId !== (int) $party_2) {
-            throw new PartyVerificationException(
-                403,
-                'NOT_A_PARTY',
-                'You can only create an agreement you are a party to.',
-            );
-        }
+            $persons = Customer::where('is_active', 1);
 
-        $otpModeService = app(AgreementOtpModeService::class);
-        $otpMode = $request->input('otp_mode');
+            $person1 = (clone $persons)->where('id', $party_1)->first();
 
-        if ($otpMode !== null && !in_array($otpMode, AgreementOtpModeService::modes(), true)) {
-            throw new PartyVerificationException(422, 'INVALID_OTP_MODE', 'Unknown OTP mode.');
-        }
+            if (!$person1) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'party one  not found'
+                ]);
+            }
 
-        $requiredParties = $otpModeService->requiredForCreation(
-            $person1,
-            $person2,
-            $request->input('guarantor'),
-            $request->input('guarantor_number'),
-        );
+            $person2 = (clone $persons)->where('id', $party_2)->first();
+            // dd($person2);
+            if (!$person2) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'party  two not found'
+                ]);
+            }
 
-        $otpModeService->assertVerifiedForCreation($callerId, $otpMode, $requiredParties);
+            // ---- Caller, OTP tier and plan entitlement -------------------------
+            //
+            // This is the older twin of PhpWordController@create_aggriment and is
+            // still routed, so it carries the same gates — guarding only the /v1
+            // endpoint would leave this one as a way around both of them.
 
-        $entitlements = app(AgreementEntitlementService::class);
-        $entitlement = $entitlements->getEntitlement($callerId, $otpMode);
+            $caller = $request->user();
+            $callerId = (int) $caller->id;
 
-        if ($entitlement === null) {
-            throw new PartyVerificationException(
-                402,
-                'SUBSCRIPTION_REQUIRED',
-                'Your plan does not cover another agreement. Please renew to continue.',
-            );
-        }
-
-        $invoiceId = $request->input('invoice_id');
-
-        if (!empty($invoiceId)) {
-            $ownsInvoice = DB::table('subscription_invoices')
-                ->where('id', $invoiceId)
-                ->where('customer_id', $callerId)
-                ->exists();
-
-            if (!$ownsInvoice) {
+            if ($callerId !== (int) $party_1 && $callerId !== (int) $party_2) {
                 throw new PartyVerificationException(
                     403,
-                    'INVOICE_NOT_YOURS',
-                    'That invoice does not belong to this account.',
+                    'NOT_A_PARTY',
+                    'You can only create an agreement you are a party to.',
                 );
             }
-        }
-        // --------------------------------------------------------------------
 
-        // Add aggriment Details in aggriment table
-        $aggriment = new Aggriment;
-        $aggriment->otp_mode = $otpMode;
-        $aggriment->party_1_id = $party_1;
-        $aggriment->party_1_signature = $request->party_1_signature;
-        $aggriment->party_2_id = $party_2;
-        $aggriment->party_2_signature = $request->party_2_signature;
-        $aggriment->amount = $request->amount;
-        $aggriment->start_date = $request->start_date;
-        $aggriment->end_date = $request->end_date;
-        $aggriment->agreement_date = $request->agreement_date;
-        $aggriment->agreement_type = $request->agreement_type;
-        $aggriment->is_interest = $request->is_interest;
-        $aggriment->reference_no = $request->reference_no;
-        $aggriment->reference_remark = $request->reference_remark;
-        $aggriment->address = $request->address;
-        $aggriment->note = $request->note;
-        $aggriment->security = $request->security;
-        $aggriment->guarantor = $request->guarantor;
-        $aggriment->guarantor_number = $request->guarantor_number;
-        $aggriment->agreement_status = $request->agreement_status;
-        $aggriment->period = $request->period;
-        $aggriment->documents = $request->documents;
-        $aggriment->repayment_term = $request->repayment_term;
-        $aggriment->aggriment_language_id = $request->aggriment_language_id;
-        $aggriment->category_id = $request->category_id;
-        $aggriment->purpose = $request->purpose;
-         $person_one = $request->file('party_one_image') ? $this->image_resize($request->file('party_one_image'), 'person_images') : null;
-        $person_two = $request->file('party_two_image') ? $this->image_resize($request->file('party_two_image'), 'person_images') : null;
+            $otpModeService = app(AgreementOtpModeService::class);
+            $otpMode = $request->input('otp_mode');
 
-        $aggriment->party_1_image = $person_one;
-        $aggriment->party_2_image = $person_two;
+            if ($otpMode !== null && !in_array($otpMode, AgreementOtpModeService::modes(), true)) {
+                throw new PartyVerificationException(422, 'INVALID_OTP_MODE', 'Unknown OTP mode.');
+            }
 
-        // Insert and plan decrement in one transaction — see the twin in
-        // PhpWordController for why the row lock matters here.
-        DB::transaction(function () use ($aggriment, $entitlement, $entitlements) {
-            $aggriment->save();
+            $requiredParties = $otpModeService->requiredForCreation(
+                $person1,
+                $person2,
+                $request->input('guarantor'),
+                $request->input('guarantor_number'),
+            );
 
-            if (!$entitlements->consume($entitlement['subscription_id'])) {
+            $otpModeService->assertVerifiedForCreation($callerId, $otpMode, $requiredParties);
+
+            $entitlements = app(AgreementEntitlementService::class);
+            $entitlement = $entitlements->getEntitlement($callerId, $otpMode);
+
+            if ($entitlement === null) {
                 throw new PartyVerificationException(
                     402,
-                    'SUBSCRIPTION_EXHAUSTED',
-                    'Your plan ran out while this agreement was being created. Please renew and try again.',
+                    'SUBSCRIPTION_REQUIRED',
+                    'Your plan does not cover another agreement. Please renew to continue.',
                 );
             }
-        });
 
-        $otpModeService->snapshotForAgreement($aggriment, $callerId, $requiredParties);
-        // Add aggriment Details in aggriment table
+            $invoiceId = $request->input('invoice_id');
 
+            if (!empty($invoiceId)) {
+                $ownsInvoice = DB::table('subscription_invoices')
+                    ->where('id', $invoiceId)
+                    ->where('customer_id', $callerId)
+                    ->exists();
 
-
-        if($request->attribute){
-              $attributes = explode('|', $request->attribute);
-            
-        foreach ($attributes as $attribute) {
-            $attribute_parts = explode(': ', $attribute);
-
-            $attribute_id = (int) trim($attribute_parts[0]);
-            $attribute_value = trim($attribute_parts[1], '"');
-
-            $agreement_attribute = new AgreementAttribute;
-            $agreement_attribute->agreement_id = $aggriment->id;
-            $agreement_attribute->attribute_id = $attribute_id;
-            $agreement_attribute->attribute_value = $attribute_value;
-            $agreement_attribute->save();
-        }
-        }
-
-        // insert create_aggriment 
-
-
-        $aggriment = Aggriment::with('party1', 'party2', 'category', 'attributes.categoryAttribute')->where('id', $aggriment->id)->first();
-
-        if (!is_null($aggriment->amount)) {
-
-            $start_date = $aggriment->start_date;
-            $end_date  = $aggriment->end_date;
-
-            $start = Carbon::parse($start_date);
-            $end =  Carbon::parse($end_date);
-            $perid = $start->diffInMonths($end);
-
-            $amount = $aggriment->amount / $aggriment->period;
-
-            for ($i = 0; $i < $aggriment->period; $i++) {
-                $installment  = new Installment;
-                $installment->agreement_id = $aggriment->id;
-                $installment->emi_amount = $amount;
-                $installment->emi_date = $start->copy()->addMonths($i + 1);
-                $installment->save();
+                if (!$ownsInvoice) {
+                    throw new PartyVerificationException(
+                        403,
+                        'INVOICE_NOT_YOURS',
+                        'That invoice does not belong to this account.',
+                    );
+                }
             }
-        }
-        $attribute_list = AgreementAttribute::join('category_attributes', 'category_attributes.id', '=', 'agreement_attribute.attribute_id')->where('agreement_id', $aggriment->id)->get();
-        $startDateTime = Carbon::createFromFormat('Y-m-d', $aggriment->start_date);
-        $endDateTime = Carbon::createFromFormat('Y-m-d', $aggriment->end_date);
+            // --------------------------------------------------------------------
+
+            // Add aggriment Details in aggriment table
+            $aggriment = new Aggriment;
+            $aggriment->otp_mode = $otpMode;
+            $aggriment->party_1_id = $party_1;
+            $aggriment->party_1_signature = $request->party_1_signature;
+            $aggriment->party_2_id = $party_2;
+            $aggriment->party_2_signature = $request->party_2_signature;
+            $aggriment->amount = $request->amount;
+            $aggriment->start_date = $request->start_date;
+            $aggriment->end_date = $request->end_date;
+            $aggriment->agreement_date = $request->agreement_date;
+            $aggriment->agreement_type = $request->agreement_type;
+            $aggriment->is_interest = $request->is_interest;
+            $aggriment->reference_no = $request->reference_no;
+            $aggriment->reference_remark = $request->reference_remark;
+            $aggriment->address = $request->address;
+            $aggriment->note = $request->note;
+            $aggriment->security = $request->security;
+            $aggriment->guarantor = $request->guarantor;
+            $aggriment->guarantor_number = $request->guarantor_number;
+            $aggriment->agreement_status = $request->agreement_status;
+            $aggriment->period = $request->period;
+            $aggriment->documents = $request->documents;
+            $aggriment->repayment_term = $request->repayment_term;
+            $aggriment->aggriment_language_id = $request->aggriment_language_id;
+            $aggriment->category_id = $request->category_id;
+            $aggriment->purpose = $request->purpose;
+            $person_one = $request->file('party_one_image') ? $this->image_resize($request->file('party_one_image'), 'person_images') : null;
+            $person_two = $request->file('party_two_image') ? $this->image_resize($request->file('party_two_image'), 'person_images') : null;
+
+            $aggriment->party_1_image = $person_one;
+            $aggriment->party_2_image = $person_two;
+
+            // Insert and plan decrement in one transaction — see the twin in
+            // PhpWordController for why the row lock matters here.
+            DB::transaction(function () use ($aggriment, $entitlement, $entitlements) {
+                $aggriment->save();
+
+                if (!$entitlements->consume($entitlement['subscription_id'])) {
+                    throw new PartyVerificationException(
+                        402,
+                        'SUBSCRIPTION_EXHAUSTED',
+                        'Your plan ran out while this agreement was being created. Please renew and try again.',
+                    );
+                }
+            });
+
+            $otpModeService->snapshotForAgreement($aggriment, $callerId, $requiredParties);
+            // Add aggriment Details in aggriment table
 
 
-         $person_1_image_base64 = null;
-        if (!empty($aggriment->party_1_image)) {
-            $person_1_image_path = base_path('public/admin/images/person_images_thumb/' . basename($aggriment->party_one_image_url));
-            if (file_exists($person_1_image_path)) {
-                $person_1_image_base64 = base64_encode(file_get_contents($person_1_image_path));
+
+            if ($request->attribute) {
+                $attributes = explode('|', $request->attribute);
+
+                foreach ($attributes as $attribute) {
+                    $attribute_parts = explode(': ', $attribute);
+
+                    $attribute_id = (int) trim($attribute_parts[0]);
+                    $attribute_value = trim($attribute_parts[1], '"');
+
+                    $agreement_attribute = new AgreementAttribute;
+                    $agreement_attribute->agreement_id = $aggriment->id;
+                    $agreement_attribute->attribute_id = $attribute_id;
+                    $agreement_attribute->attribute_value = $attribute_value;
+                    $agreement_attribute->save();
+                }
             }
-        }
 
-        $person_2_image_base64 = null;
-        if (!empty($aggriment->party_2_image)) {
-            $person_2_image_path = base_path('public/admin/images/person_images_thumb/' . basename($aggriment->party_two_image_url));
-            if (file_exists($person_2_image_path)) {
-                $person_2_image_base64 = base64_encode(file_get_contents($person_2_image_path));
+            // insert create_aggriment 
+
+
+            $aggriment = Aggriment::with('party1', 'party2', 'category', 'attributes.categoryAttribute')->where('id', $aggriment->id)->first();
+
+            if (!is_null($aggriment->amount)) {
+
+                $start_date = $aggriment->start_date;
+                $end_date = $aggriment->end_date;
+
+                $start = Carbon::parse($start_date);
+                $end = Carbon::parse($end_date);
+                $perid = $start->diffInMonths($end);
+
+                $amount = $aggriment->amount / $aggriment->period;
+
+                for ($i = 0; $i < $aggriment->period; $i++) {
+                    $installment = new Installment;
+                    $installment->agreement_id = $aggriment->id;
+                    $installment->emi_amount = $amount;
+                    $installment->emi_date = $start->copy()->addMonths($i + 1);
+                    $installment->save();
+                }
             }
-        }
+            $attribute_list = AgreementAttribute::join('category_attributes', 'category_attributes.id', '=', 'agreement_attribute.attribute_id')->where('agreement_id', $aggriment->id)->get();
+            $startDateTime = Carbon::createFromFormat('Y-m-d', $aggriment->start_date);
+            $endDateTime = Carbon::createFromFormat('Y-m-d', $aggriment->end_date);
 
 
-        $show = CategoryLanguage::where('category_id', $aggriment->category_id)->where('language_id', $aggriment->aggriment_language_id)->first();
+            $person_1_image_base64 = null;
+            if (!empty($aggriment->party_1_image)) {
+                $person_1_image_path = base_path('public/admin/images/person_images_thumb/' . basename($aggriment->party_one_image_url));
+                if (file_exists($person_1_image_path)) {
+                    $person_1_image_base64 = base64_encode(file_get_contents($person_1_image_path));
+                }
+            }
 
-        // dd($show->agreement_text);
-        if (!$show) {
-            return response()->json([
-                'status' => false,
-                'message' => 'No record found for the given category and language.',
-            ], 404);
-        }
-      $fmt = new \NumberFormatter(app()->getLocale(), \NumberFormatter::SPELLOUT);
-$fmt->setTextAttribute(\NumberFormatter::DEFAULT_RULESET, "%spellout-cardinal"); // ICU rule
-$depositValue = $aggriment->security;
-$rentValue = $aggriment->amount;
-$dp_word = $fmt->format($depositValue);
-$rant_word = $fmt->format($rentValue);
-
-
-$deposite_in_word = ucfirst($dp_word) . ' Only';
-$rent_in_word = ucfirst($rant_word) . ' Only';
+            $person_2_image_base64 = null;
+            if (!empty($aggriment->party_2_image)) {
+                $person_2_image_path = base_path('public/admin/images/person_images_thumb/' . basename($aggriment->party_two_image_url));
+                if (file_exists($person_2_image_path)) {
+                    $person_2_image_base64 = base64_encode(file_get_contents($person_2_image_path));
+                }
+            }
 
 
-$guarantor_name = $aggriment->guarantor;   
-$guarantor_number = $aggriment->guarantor_number;    
-// dd($guarantor_number);
+            $show = CategoryLanguage::where('category_id', $aggriment->category_id)->where('language_id', $aggriment->aggriment_language_id)->first();
 
-$guarantor_name_array = explode(',',$guarantor_name);
-$guarantor_number_array = explode(',',$guarantor_number);
+            // dd($show->agreement_text);
+            if (!$show) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No record found for the given category and language.',
+                ], 404);
+            }
+            $fmt = new \NumberFormatter(app()->getLocale(), \NumberFormatter::SPELLOUT);
+            $fmt->setTextAttribute(\NumberFormatter::DEFAULT_RULESET, "%spellout-cardinal"); // ICU rule
+            $depositValue = $aggriment->security;
+            $rentValue = $aggriment->amount;
+            $dp_word = $fmt->format($depositValue);
+            $rant_word = $fmt->format($rentValue);
 
 
-        $show->agreement_text = str_replace('@party_one_name', $aggriment->party1->name, $show->agreement_text);
-        $show->agreement_text = str_replace('@party_one_address', $aggriment->party1->address, $show->agreement_text);
-        $show->agreement_text = str_replace('@party_one_number', $aggriment->party1->mobile, $show->agreement_text);
-        $show->agreement_text = str_replace('@party_two_name', $aggriment->party2->name, $show->agreement_text);
-        $show->agreement_text = str_replace('@party_two_address', $aggriment->party2->address, $show->agreement_text);
-        $show->agreement_text = str_replace('@party_two_number', $aggriment->party2->mobile, $show->agreement_text);
-        $show->agreement_text = str_replace('@deposite', $aggriment->security, $show->agreement_text);
-        $show->agreement_text = str_replace('@dp_in_word', $deposite_in_word, $show->agreement_text);
-        $show->agreement_text = str_replace('@agreement_amount', $aggriment->amount, $show->agreement_text);            // ++ Arjun
-        $show->agreement_text = str_replace('@start_date', $startDateTime->format('d-m-Y'), $show->agreement_text);
-        $show->agreement_text = str_replace('@end_date', $endDateTime->format('d-m-Y'), $show->agreement_text);
-        $show->agreement_text = str_replace('@rent', $aggriment->amount, $show->agreement_text);
-        $show->agreement_text = str_replace('@rnt_amount_in_word', $rent_in_word, $show->agreement_text);
-        $show->agreement_text = str_replace('@duration', $aggriment->period, $show->agreement_text);
-        $show->agreement_text = str_replace('@person_2_image', $person_2_image_base64, $show->agreement_text);
-        $show->agreement_text = str_replace('@person_1_image', $person_1_image_base64, $show->agreement_text);
-        $show->agreement_text = str_replace('@guarantor', $guarantor_name_array[0] ?? " ", $show->agreement_text);
-        $show->agreement_text = str_replace('@guaranto', $guarantor_name_array[1] ?? " ", $show->agreement_text);
-        $show->agreement_text = str_replace('@number_1', $guarantor_number_array[0] ?? " ", $show->agreement_text);
-        $show->agreement_text = str_replace('@number_2', $guarantor_number_array[1] ?? " ", $show->agreement_text);
-        $show->agreement_text = str_replace('@agreement_date', $aggriment->agreement_date, $show->agreement_text);
-        $show->agreement_text = str_replace('@reference_no', $aggriment->reference_no, $show->agreement_text);
-        $show->agreement_text = str_replace('@address', $aggriment->address, $show->agreement_text);
-        $show->agreement_text = str_replace('@note', $aggriment->note, $show->agreement_text);
-        
+            $deposite_in_word = ucfirst($dp_word) . ' Only';
+            $rent_in_word = ucfirst($rant_word) . ' Only';
+
+
+            $guarantor_name = $aggriment->guarantor;
+            $guarantor_number = $aggriment->guarantor_number;
+            // dd($guarantor_number);
+
+            $guarantor_name_array = explode(',', $guarantor_name);
+            $guarantor_number_array = explode(',', $guarantor_number);
+
+
+            $show->agreement_text = str_replace('@party_one_name', $aggriment->party1->name, $show->agreement_text);
+            $show->agreement_text = str_replace('@party_one_address', $aggriment->party1->address, $show->agreement_text);
+            $show->agreement_text = str_replace('@party_one_number', $aggriment->party1->mobile, $show->agreement_text);
+            $show->agreement_text = str_replace('@party_two_name', $aggriment->party2->name, $show->agreement_text);
+            $show->agreement_text = str_replace('@party_two_address', $aggriment->party2->address, $show->agreement_text);
+            $show->agreement_text = str_replace('@party_two_number', $aggriment->party2->mobile, $show->agreement_text);
+            $show->agreement_text = str_replace('@deposite', $aggriment->security, $show->agreement_text);
+            $show->agreement_text = str_replace('@dp_in_word', $deposite_in_word, $show->agreement_text);
+            $show->agreement_text = str_replace('@agreement_amount', $aggriment->amount, $show->agreement_text);            // ++ Arjun
+            $show->agreement_text = str_replace('@start_date', $startDateTime->format('d-m-Y'), $show->agreement_text);
+            $show->agreement_text = str_replace('@end_date', $endDateTime->format('d-m-Y'), $show->agreement_text);
+            $show->agreement_text = str_replace('@rent', $aggriment->amount, $show->agreement_text);
+            $show->agreement_text = str_replace('@rnt_amount_in_word', $rent_in_word, $show->agreement_text);
+            $show->agreement_text = str_replace('@duration', $aggriment->period, $show->agreement_text);
+            $show->agreement_text = str_replace('@person_2_image', $person_2_image_base64, $show->agreement_text);
+            $show->agreement_text = str_replace('@person_1_image', $person_1_image_base64, $show->agreement_text);
+            $show->agreement_text = str_replace('@guarantor', $guarantor_name_array[0] ?? " ", $show->agreement_text);
+            $show->agreement_text = str_replace('@guaranto', $guarantor_name_array[1] ?? " ", $show->agreement_text);
+            $show->agreement_text = str_replace('@number_1', $guarantor_number_array[0] ?? " ", $show->agreement_text);
+            $show->agreement_text = str_replace('@number_2', $guarantor_number_array[1] ?? " ", $show->agreement_text);
+            $show->agreement_text = str_replace('@agreement_date', $aggriment->agreement_date, $show->agreement_text);
+            $show->agreement_text = str_replace('@reference_no', $aggriment->reference_no, $show->agreement_text);
+            $show->agreement_text = str_replace('@address', $aggriment->address, $show->agreement_text);
+            $show->agreement_text = str_replace('@note', $aggriment->note, $show->agreement_text);
+
             $attributes = DB::table('agreement_attribute')
                 ->leftJoin('category_attributes', 'agreement_attribute.attribute_id', '=', 'category_attributes.id')
                 ->where('agreement_attribute.agreement_id', $aggriment->id)
                 ->select('agreement_attribute.id', 'agreement_attribute.attribute_id', 'category_attributes.attribute_name', 'category_attributes.attribute_code', 'agreement_attribute.attribute_value')
                 ->get();
-                
-                foreach ($attributes as $attribute){
-                    $show->agreement_text = str_replace($attribute->attribute_code, $attribute->attribute_value, $show->agreement_text);
-                }
+
+            foreach ($attributes as $attribute) {
+                $show->agreement_text = str_replace($attribute->attribute_code, $attribute->attribute_value, $show->agreement_text);
+            }
 
 
-        if ($aggriment->party_2_signature) {
-            $show->agreement_text = str_replace(
-                '@person2_signature',
-                '<img src="data:image/png;base64,' . $aggriment->party_2_signature . '" alt="Party 2 Signature" style="width: 200px; height: auto; border: 0px solid #000;">',
-                $show->agreement_text
-            );
-        }
-        if ($aggriment->party_1_signature) {
-            $show->agreement_text = str_replace(
-                '@person1_signature',
-                '<img src="data:image/png;base64,' . $aggriment->party_1_signature . '" alt="Party 1 Signature" style="width: 200px; height: auto; border: 0px solid #000;">',
-                $show->agreement_text
-            );
-        }
+            if ($aggriment->party_2_signature) {
+                $show->agreement_text = str_replace(
+                    '@person2_signature',
+                    '<img src="data:image/png;base64,' . $aggriment->party_2_signature . '" alt="Party 2 Signature" style="width: 200px; height: auto; border: 0px solid #000;">',
+                    $show->agreement_text
+                );
+            }
+            if ($aggriment->party_1_signature) {
+                $show->agreement_text = str_replace(
+                    '@person1_signature',
+                    '<img src="data:image/png;base64,' . $aggriment->party_1_signature . '" alt="Party 1 Signature" style="width: 200px; height: auto; border: 0px solid #000;">',
+                    $show->agreement_text
+                );
+            }
 
-        $attribute_list_html = '';
-        foreach ($attribute_list as $list) {
-            $attribute_list_html .= '<li><strong class="english_data" >' . $list->attribute_name . ':</strong> ' . $list->value . '</li>';
-        }
+            $attribute_list_html = '';
+            foreach ($attribute_list as $list) {
+                $attribute_list_html .= '<li><strong class="english_data" >' . $list->attribute_name . ':</strong> ' . $list->value . '</li>';
+            }
 
-        $show->agreement_text = str_replace('@attribute_values', $attribute_list_html, $show->agreement_text);
-
-
-        $data = [
-            'persone_1_details' => $aggriment->party1,
-            'persone_2_details' => $aggriment->party2,
-            'start_date' => $startDateTime->format('d-m-Y'),
-            'end_date' => $endDateTime->format('d-m-Y'),
-            'rent' => $aggriment->repayment_term,
-            'deposite' => $aggriment->security,
-            'duration' => $aggriment->period,
-            'bg_image' => $path,
-            'person_2_image_url' => $person_2_image_base64,
-            'person_1_image_url' => $person_1_image_base64,
-            'show' => $show,
-            'attribute_list' => $attribute_list
-        ];
-        
-
-        if ($show->language_id == 2) {
-            $pdf = Pdf::loadView('aggriments.money_aggriment_gu', $data)
-                ->setOption('isHtml5ParserEnabled', true)
-                ->setOption('isPhpEnabled', true);
-
-            // return $pdf->stream('affidavit.pdf');
-        }
+            $show->agreement_text = str_replace('@attribute_values', $attribute_list_html, $show->agreement_text);
 
 
-        if ($show->language_id == 1) {
+            $data = [
+                'persone_1_details' => $aggriment->party1,
+                'persone_2_details' => $aggriment->party2,
+                'start_date' => $startDateTime->format('d-m-Y'),
+                'end_date' => $endDateTime->format('d-m-Y'),
+                'rent' => $aggriment->repayment_term,
+                'deposite' => $aggriment->security,
+                'duration' => $aggriment->period,
+                'bg_image' => $path,
+                'person_2_image_url' => $person_2_image_base64,
+                'person_1_image_url' => $person_1_image_base64,
+                'show' => $show,
+                'attribute_list' => $attribute_list
+            ];
 
-            $pdf = Pdf::loadView('aggriments.money_aggriment_gu', $data)
-                ->setOption('isHtml5ParserEnabled', true)  // Enable HTML5 parser
-                ->setOption('isPhpEnabled', true);
 
-            // return $pdf->stream('affidavit.pdf');
-        }
+            if ($show->language_id == 2) {
+                $pdf = Pdf::loadView('aggriments.money_aggriment_gu', $data)
+                    ->setOption('isHtml5ParserEnabled', true)
+                    ->setOption('isPhpEnabled', true);
 
-        if ($request->view == 1) {
-            return $pdf->stream('affidavit.pdf');
-        }
+                // return $pdf->stream('affidavit.pdf');
+            }
 
-        $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
 
-        $filePath = 'assets/pdfs/rent_agreement_' . time() . '.pdf';
+            if ($show->language_id == 1) {
 
-        File::put(public_path($filePath), $pdf->output());
+                $pdf = Pdf::loadView('aggriments.money_aggriment_gu', $data)
+                    ->setOption('isHtml5ParserEnabled', true)  // Enable HTML5 parser
+                    ->setOption('isPhpEnabled', true);
 
-        $fileUrl = asset($filePath);
+                // return $pdf->stream('affidavit.pdf');
+            }
 
-        $aggriment->documents = $fileUrl;
-        $aggriment->save();
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Agreement created successfully',
-            'url' => $fileUrl,
-            'aggriment_id' =>$aggriment->id,
-            'filename' => 'money_agreement.pdf',
-        ]);
+            if ($request->view == 1) {
+                return $pdf->stream('affidavit.pdf');
+            }
+
+            $pdf->getDomPDF()->set_option("isFontSubsettingEnabled", true);
+
+            $filePath = 'assets/pdfs/rent_agreement_' . time() . '.pdf';
+
+            File::put(public_path($filePath), $pdf->output());
+
+            $fileUrl = asset($filePath);
+
+            $aggriment->documents = $fileUrl;
+            $aggriment->save();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Agreement created successfully',
+                'url' => $fileUrl,
+                'aggriment_id' => $aggriment->id,
+                'filename' => 'money_agreement.pdf',
+            ]);
         } catch (PartyVerificationException $e) {
             // Keeps its own status code instead of being flattened into a 500
             // by the generic handler below.
@@ -789,7 +790,7 @@ $guarantor_number_array = explode(',',$guarantor_number);
 
     public function list_aggriment(Request $request)
     {
-          $user_id = $request->user_id;
+        $user_id = $request->user_id;
 
 
         // when user is person 1 in deal 
@@ -802,22 +803,23 @@ $guarantor_number_array = explode(',',$guarantor_number);
             'languages.language_name as language_name',
             'languages.language_in_guj as language',
         )->join('customers as party1', 'party1.id', '=', 'agreements.party_1_id')
-            ->join('customers as party2', 'party2.id', '=',  'agreements.party_2_id')
+            ->join('customers as party2', 'party2.id', '=', 'agreements.party_2_id')
             ->join('languages', 'languages.id', '=', 'agreements.aggriment_language_id')
             ->where('party_1_id', $user_id)
             ->orderBy('agreements.id', 'DESC')
             ->get();
-            
-            // dd($party_1);
-            if($party_1->isEmpty()){
 
-                 return response()->json([
-            'status' => false,
-            'message' => 'No Aggriment created yet',
-            'data' => [],
-            ]
-        );
-            }
+        // dd($party_1);
+        if ($party_1->isEmpty()) {
+
+            return response()->json(
+                [
+                    'status' => false,
+                    'message' => 'No Aggriment created yet',
+                    'data' => [],
+                ]
+            );
+        }
 
         foreach ($party_1 as $party) {
 
@@ -845,10 +847,11 @@ $guarantor_number_array = explode(',',$guarantor_number);
             ];
         }
 
-        return response()->json([
-            'status' => true,
-            'message' => 'Agreements retrived successfully',
-            'data' => $response,
+        return response()->json(
+            [
+                'status' => true,
+                'message' => 'Agreements retrived successfully',
+                'data' => $response,
             ]
         );
     }
@@ -960,11 +963,11 @@ $guarantor_number_array = explode(',',$guarantor_number);
             // 'attributes.categoryAttribute',
             'installments',
             'histories.cutomers',
-             'invoice'
+            'invoice'
 
         )->where('id', $agreement_id)->first();
-        
-         $aggriment_attribute = AgreementAttribute::select('agreement_attribute.id','category_attributes.attribute_name','agreement_attribute.attribute_value')
+
+        $aggriment_attribute = AgreementAttribute::select('agreement_attribute.id', 'category_attributes.attribute_name', 'agreement_attribute.attribute_value')
             ->join('category_attributes', 'agreement_attribute.attribute_id', '=', 'category_attributes.id')
             ->where('agreement_id', $aggriment_details->id)
             ->get();
@@ -980,13 +983,13 @@ $guarantor_number_array = explode(',',$guarantor_number);
     }
 
 
- public function delete_history(Request $request)
+    public function delete_history(Request $request)
     {
         // Validate the request
         $validator = Validator::make($request->all(), [
             'history_id' => 'required|exists:histories,id'
         ]);
-    
+
         if ($validator->fails()) {
             return response()->json([
                 'status' => false,
@@ -994,19 +997,19 @@ $guarantor_number_array = explode(',',$guarantor_number);
                 'errors' => $validator->errors()
             ], 422);
         }
-    
+
         try {
             $history = History::find($request->history_id);
-    
+
             if (!$history) {
                 return response()->json([
                     'status' => false,
                     'message' => 'History not found'
                 ], 404); // HTTP 404 Not Found
             }
-    
+
             $history->delete();
-    
+
             return response()->json([
                 'status' => true,
                 'message' => 'History deleted successfully'
@@ -1019,6 +1022,6 @@ $guarantor_number_array = explode(',',$guarantor_number);
             ], 500);
         }
     }
-    
-    
+
+
 }

@@ -7,10 +7,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable
+class User extends Authenticatable implements JWTSubject
 {
     use HasFactory, Notifiable;
+
+    /**
+     * The accessors to append to the model's array/JSON form.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = [
+        'photo_url',
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -23,6 +33,17 @@ class User extends Authenticatable
         'password',
         'profile_picture',
         'status',
+        'mobile',
+        'address',
+        'is_company',
+        'company_name',
+        'gst_number',
+        'location',
+        'signature',
+        'occupation',
+        'date_of_birth',
+        'gender',
+        'photo',
     ];
 
     /**
@@ -45,6 +66,8 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_company' => 'boolean',
+            'date_of_birth' => 'date',
         ];
     }
 
@@ -54,7 +77,6 @@ class User extends Authenticatable
      * @param  string  $value
      * @return bool
      */
-   
 
     /**
      * Set the user's status.
@@ -62,5 +84,32 @@ class User extends Authenticatable
      * @param  mixed  $value
      * @return void
      */
-   
+
+    /** Full URL for the uploaded photo, or null when none was set. */
+    public function getPhotoUrlAttribute(): ?string
+    {
+        return $this->profile_picture ? asset('images/profiles/' . $this->profile_picture) : null;
+    }
+
+    /** JWTSubject: the value put in the token's `sub` claim. */
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    /**
+     * JWTSubject: extra claims merged into the token.
+     */
+    public function getJWTCustomClaims()
+    {
+        return ['type' => 'user'];
+    }
+
+    /**
+     * Get all active tokens/sessions registered by the user.
+     */
+    public function tokens(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(UserToken::class);
+    }
 }

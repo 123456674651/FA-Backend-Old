@@ -23,6 +23,16 @@ class Feed extends Model
         return $this->belongsTo(Customer::class, 'customer_id2', 'id');
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'customer_id', 'id');
+    }
+
+    public function user2()
+    {
+        return $this->belongsTo(User::class, 'customer_id2', 'id');
+    }
+
     public function category()
     {
         return $this->belongsTo(DealCategory::class, 'category_id', 'id');

@@ -7,9 +7,12 @@
     },
     "lmg-arun": {
         "100": "\/home\/u271047674\/domains\/gnhub.net\/public_html\/fast-agreement\/storage\/fonts\/\/lmg_arun_100_9fdea1eec5c424d40dee41b28e4e8e10",
-        "normal": "lmg_arun_normal_812edca316132df03fca9e1105b323e0"
+        "normal": "lmg_arun_normal_2a7d7842c54720bf1d92dc9244aa81b5"
     },
     "noto sans gujarati": {
-        "normal": "noto_sans_gujarati_normal_2413d211e63cf19ae12d5296d3e98bed"
+        "normal": "noto_sans_gujarati_normal_0d560ab977e1a908dfddd787e9c29cb0"
+    },
+    "shruti": {
+        "normal": "shruti_normal_a00e80200da02cc53e17fd0b1a127ba7"
     }
 }

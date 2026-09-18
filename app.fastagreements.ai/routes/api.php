@@ -31,6 +31,14 @@ use App\Http\Controllers\Admin\AttributeController;
 use App\Http\Controllers\api\V2\AuthController as AuthControllerV2;
 use App\Http\Controllers\api\V2\CommonController as CommonControllerV2;
 use App\Http\Controllers\api\V2\PaymentApiController as PaymentApiControllerV2;
+use App\Http\Controllers\api\V2\AgreementController as AgreementControllerV2;
+use App\Http\Controllers\api\V2\CustomerController as CustomerControllerV2;
+use App\Http\Controllers\api\V2\MyProfilesController;
+use App\Http\Controllers\api\V2\FeedController as FeedControllerV2;
+use App\Http\Controllers\api\V2\CMSController as CMSControllerV2;
+use App\Http\Controllers\api\V2\SubscriptionPlanController as SubscriptionPlanControllerV2;
+use App\Http\Controllers\api\V2\VersionController as VersionControllerV2;
+
 use App\Http\Middleware\EnsureMinimumAppVersion;
 use App\Models\Sceme;
 use App\Support\ApiResponse;
@@ -76,10 +84,78 @@ Route::post('auth/firebase-exchange', fn() => ApiResponse::error(
 ));
 Route::get('auth/exists', [AuthApiController::class, 'exists']);
 
-// Auth (v2 - MSG91 mobile OTP)
-Route::post('v2/login', [AuthControllerV2::class, 'login']);
-Route::post('v2/verified-otp', [AuthControllerV2::class, 'verifiedOtp']);
-Route::post('v2/register', [AuthControllerV2::class, 'register']);
+/*
+|--------------------------------------------------------------------------
+| V2 APIs (Clean Version 2 Architecture)
+|--------------------------------------------------------------------------
+*/
+// 1. V2 Public Routes
+Route::prefix('v2')->group(function () {
+
+    Route::post('check-version', [VersionControllerV2::class, 'check_version']);
+
+    // Auth (MSG91 mobile OTP)
+    Route::post('login', [AuthControllerV2::class, 'login']);
+    Route::post('verified-otp', [AuthControllerV2::class, 'verifiedOtp']);
+    Route::post('register', [AuthControllerV2::class, 'register']);
+
+    // Customers
+    Route::post('get_user', [CustomerControllerV2::class, 'getUserByMobile']);
+
+
+    // Public Razorpay Webhook
+    Route::post('payment/webhook', [PaymentApiControllerV2::class, 'webhook'])
+        ->withoutMiddleware(EnsureMinimumAppVersion::class)
+        ->middleware('throttle:60,1');
+
+    Route::get("language-button", [CommonControllerV2::class, 'languageButtons']);
+
+    // CMS Pages
+    Route::post('/cms-pages', [CMSControllerV2::class, 'index']);
+});
+
+// 2. V2 Authenticated Routes (Requires JWT Token)
+Route::prefix('v2')->middleware('auth.jwt')->group(function () {
+    // Auth & Device
+    Route::post('logout', [AuthControllerV2::class, 'logout']);
+
+    // Customer
+    Route::post('get_customer', [CustomerControllerV2::class, 'getCustomerByMobile']);
+    Route::post('customer_store', [CustomerControllerV2::class, 'store']);
+    Route::post('customers/update', [CustomerControllerV2::class, 'update'])->name('api.v2.customers.update');
+
+    // Agreements
+    Route::post('agreements/save-step', [AgreementControllerV2::class, 'save_agreement_step']);
+    Route::post('agreements/party-wise', [AgreementControllerV2::class, 'party_wise_agreements']);
+    Route::post('agreements/details', [AgreementControllerV2::class, 'details']);
+
+    // Feeds Section
+    Route::post('feed', [FeedControllerV2::class, 'index']);
+    Route::post('feed/publish', [FeedControllerV2::class, 'publish']);
+
+    // Common OTP & Verification
+    Route::post('send-otp', [CommonControllerV2::class, 'sendOtp']);
+    Route::post('verify-otp', [CommonControllerV2::class, 'verifyOtp']);
+
+    // Payments & Invoicing
+    Route::get('payment/key', [PaymentApiControllerV2::class, 'razorypayCredentials']);
+    Route::post('payment/order', [PaymentApiControllerV2::class, 'createOrder']);
+    Route::post('payment/verify', [PaymentApiControllerV2::class, 'verify']);
+    Route::get('payment/history', [PaymentApiControllerV2::class, 'history']);
+
+    // My Profile
+    Route::post('my_profile', [MyProfilesController::class, 'show']);
+    Route::post('update_profile', [MyProfilesController::class, 'update']);
+
+    // Settings
+    Route::post('settings/payment-histories', [PaymentApiControllerV2::class, 'paymentHistoriesList']);
+    Route::post('legal-notices', [MyProfilesController::class, 'legalNotices']);
+    Route::post('allow-feeds', [MyProfilesController::class, 'updateAllowPrompt']);
+
+    // Subscription Plans
+    Route::post('subscription-plans', [SubscriptionPlanControllerV2::class, 'index']);
+});
+
 
 // Master & Reference Data
 Route::get('/deal_categories', [DealCategoryController::class, 'index'])->name('api.dealCategories.index');
@@ -166,11 +242,6 @@ Route::middleware('auth.jwt')->group(function () {
     Route::patch('/customers/allow-prompt', [CustomerController::class, 'updateAllowPrompt']);
 
     Route::post('upload_image', [CustomerController::class, 'upload_image']);
-
-    // Common OTP (v2) - e.g. confirming a new mobile number for an already-signed-in customer
-    Route::post('v2/send-otp', [CommonControllerV2::class, 'sendOtp']);
-    Route::post('v2/verify-otp', [CommonControllerV2::class, 'verifyOtp']);
-
     Route::post('party-verifications/msg91', [PartyVerificationController::class, 'verifyPhone']);
     Route::post('party-verifications/pending', [PartyVerificationController::class, 'pendingForCreation']);
     Route::get('agreements/{agreement}/verifications', [PartyVerificationController::class, 'forAgreement'])->whereNumber('agreement');
@@ -199,14 +270,10 @@ Route::middleware('auth.jwt')->group(function () {
     Route::post('/aadhar_info/{id}', [AadharInfoController::class, 'update']);
     Route::delete('/aadhar_info/{id}', [AadharInfoController::class, 'destroy']);
 
-    // Subscriptions & Payments
+    // Subscriptions & Payments (V1)
     Route::get('subscription/status/{customer_id}', [SubscriptionApiController::class, 'status']);
     Route::post('payment/order', [PaymentApiController::class, 'createOrder']);
     Route::post('payment/verify', [PaymentApiController::class, 'verify']);
-    // v2 - caller names 'test' or 'live' Razorpay keys per order
-    Route::post('v2/payment/key', [PaymentApiControllerV2::class, 'razorypayCredentials']);
-    Route::post('v2/payment/order', [PaymentApiControllerV2::class, 'createOrder']);
-    Route::post('v2/payment/verify', [PaymentApiControllerV2::class, 'verify']);
     Route::get('subscription-invoices/pdf-url/{id}', [InvoiceController::class, 'getInvoicePdfUrl']);
     Route::get('subscription-invoices/view/{id}', [InvoiceController::class, 'viewPdf']);
     Route::get('subscription-invoices/download/{id}', [InvoiceController::class, 'downloadPdf']);

@@ -43,11 +43,11 @@
     <header id="header" class="header fixed-top d-flex align-items-center">
 
         <div class="d-flex align-items-center justify-content-between">
-            <a href="{{ url('/') }}" class="logo d-flex align-items-center">
-                <img class="logo-full" src="{{ asset('assets/img/logo/dashboard_logo.png') }}?v={{ file_exists(public_path('assets/img/logo/dashboard_logo.png')) ? filemtime(public_path('assets/img/logo/dashboard_logo.png')) : time() }}"
+            <a href="{{ route('dashboard.index') }}" class="logo d-flex align-items-center">
+                <img class="logo-full"
+                    src="{{ asset('assets/img/logo/dashboard_logo.png') }}?v={{ file_exists(public_path('assets/img/logo/dashboard_logo.png')) ? filemtime(public_path('assets/img/logo/dashboard_logo.png')) : time() }}"
                     alt="Fast Agreements">
-                <img class="logo-icon" src="{{ asset('assets/img/logo/fast_agreements.png') }}"
-                    alt="Fast Agreements">
+                <img class="logo-icon" src="{{ asset('assets/img/logo/fast_agreements.png') }}" alt="Fast Agreements">
             </a>
             <span class="toggle-sidebar-btn">
                 <i class="bi bi-list toggle-sidebar-btn-open"></i>
@@ -294,65 +294,71 @@
 
             <li class="nav-heading">Pages</li>
 
-<li class="nav-item">
-    <a class="nav-link {{ request()->routeIs('agreements.*') || request()->routeIs('deal_categories.*') ? '' : 'collapsed' }}"
-        data-bs-target="#agreements-nav" data-bs-toggle="collapse" href="#">
-        <i class="bi bi-file-earmark-check"></i>
-        <span>Agreements</span>
-        <i class="bi bi-chevron-down ms-auto"></i>
-    </a>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('agreements.*') || request()->routeIs('deal_categories.*') ? '' : 'collapsed' }}"
+                    data-bs-target="#agreements-nav" data-bs-toggle="collapse" href="#">
+                    <i class="bi bi-file-earmark-check"></i>
+                    <span>Agreements</span>
+                    <i class="bi bi-chevron-down ms-auto"></i>
+                </a>
 
-    <ul id="agreements-nav"
-        class="nav-content collapse {{ request()->routeIs('agreements.*') || request()->routeIs('deal_categories.*') ? 'show' : '' }}"
-        data-bs-parent="#sidebar-nav">
+                <ul id="agreements-nav"
+                    class="nav-content collapse {{ request()->routeIs('agreements.*') || request()->routeIs('deal_categories.*') ? 'show' : '' }}"
+                    data-bs-parent="#sidebar-nav">
 
-        <li>
-            <a href="{{ route('agreements.index') }}"
-                class="{{ request()->routeIs('agreements.*') ? 'active' : '' }}">
-                <i class="bi bi-circle"></i>
-                <span>Agreements List</span>
-            </a>
-        </li>
+                    <li>
+                        <a href="{{ route('agreements.index') }}"
+                            class="{{ request()->routeIs('agreements.*') ? 'active' : '' }}">
+                            <i class="bi bi-circle"></i>
+                            <span>Agreements List</span>
+                        </a>
+                    </li>
 
-        <li>
-            <a href="{{ route('deal_categories.index') }}"
-                class="{{ request()->routeIs('deal_categories.*') ? 'active' : '' }}">
-                <i class="bi bi-circle"></i>
-                <span>Category</span>
-            </a>
-        </li>
-
-    </ul>
-</li>
-<!-- End Agreements Page Nav -->
-           <li class="nav-item">
+                    <li>
+                        <a href="{{ route('deal_categories.index') }}"
+                            class="{{ request()->routeIs('deal_categories.*') ? 'active' : '' }}">
+                            <i class="bi bi-circle"></i>
+                            <span>Categories</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('agreement-designer.index') }}"
+                            class="{{ request()->routeIs('agreement-designer.*') ? 'active' : '' }}">
+                            <i class="bi bi-circle"></i>
+                            <span>Document Designer</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <!-- End Agreements Page Nav -->
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="{{ route('legal-notices.index') }}">
                     <i class="bi bi-file-earmark-medical"></i>
                     <span>Legal Notices</span>
                 </a>
             </li><!-- End Legal Notices Page Nav -->
-          
- <li class="nav-item">
+
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="{{ route('subscription-plans.index') }}">
                     <i class="bi bi-card-list"></i>
                     <span>Plans</span>
                 </a>
             </li><!-- End Subscription Plans Page Nav -->
-           <li class="nav-item">
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="{{ route('subscription-invoices.index') }}">
                     <i class="bi bi-receipt"></i>
                     <span>Invoices</span>
                 </a>
             </li><!-- End Subscription Invoices Page Nav -->
-          
-           <li class="nav-item">
+
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="{{ route('subscription-invoices.index') }}">
                     <i class="bi bi-receipt"></i>
                     <span>Transactions</span>
                 </a>
             </li><!-- End Subscription Invoices Page Nav -->
-          
-       <!--     <li class="nav-item">
+
+            <!--     <li class="nav-item">
                 <a class="nav-link {{ request()->routeIs('notification-templates.*') || request()->routeIs('notifications.send.*') || request()->routeIs('notification-history.*') ? '' : 'collapsed' }}"
                     data-bs-target="#notifications-nav" data-bs-toggle="collapse" href="#">
                     <i class="bi bi-bell"></i><span>Notifications</span><i class="bi bi-chevron-down ms-auto"></i>
@@ -380,8 +386,8 @@
                     </li>
                 </ul>  -->
             </li><!-- End Notifications Nav -->
-      
-      
+
+
             <li class="nav-item">
                 <a class="nav-link collapsed" href="{{ route('cms-pages.index') }}">
                     <i class="bi bi-journal-text"></i>
@@ -397,14 +403,14 @@
             </li><!-- End Purpose Page Nav -->
 
 
-           
-
-           
-
-           
 
 
-           
+
+
+
+
+
+
 
 
             <li class="nav-item">
@@ -428,7 +434,7 @@
                             <i class="bi bi-circle"></i><span>Customers</span>
                         </a>
                     </li>
-                   
+
                 </ul>
             </li><!-- End Customers Nav -->
 
@@ -438,10 +444,10 @@
                     <span>Admin</span>
                 </a>
             </li><!-- End Users Page Nav -->
-    
+
             <!-- End Purpose Page Nav -->
 
-           
+
 
             <li class="nav-item">
                 <a class="nav-link collapsed" data-bs-target="#settings-nav" data-bs-toggle="collapse" href="#">
@@ -455,7 +461,7 @@
                             <i class="bi bi-circle"></i><span>Profile</span>
                         </a>
                     </li>
-               
+
                     <li>
                         <a href="{{ route('settings.index', ['tab' => 'smtp']) }}"
                             class="{{ request()->input('tab') === 'smtp' ? 'active' : '' }}">
@@ -468,60 +474,61 @@
                             <i class="bi bi-circle"></i><span>Firebase</span>
                         </a>
                     </li>
-                  
+
                 </ul>
             </li>
-      
-    <li class="nav-item">
-    <a class="nav-link {{ request()->routeIs('agreement-reports.*') || request()->routeIs('customer-reports.*') ? '' : 'collapsed' }}"
-        data-bs-target="#reports-nav" data-bs-toggle="collapse" href="#">
-        <i class="bi bi-file-earmark-check"></i>
-        <span>Reports</span>
-        <i class="bi bi-chevron-down ms-auto"></i>
-    </a>
 
-    <ul id="reports-nav"
-        class="nav-content collapse {{ request()->routeIs('agreement-reports.*') || request()->routeIs('customer-reports.*') ? 'show' : '' }}"
-        data-bs-parent="#sidebar-nav">
-
-        <li>
-            <a href="{{ route('agreement-reports.index') }}"
-                class="{{ request()->routeIs('agreement-reports.*') ? 'active' : '' }}">
-                <i class="bi bi-circle"></i>
-                <span>Agreement Reports</span>
-            </a>
-        </li>
-
-        <li>
-            <a href="{{ route('customer-reports.index') }}"
-                class="{{ request()->routeIs('customer-reports.*') ? 'active' : '' }}">
-                <i class="bi bi-circle"></i>
-                <span>Customer Reports</span>
-            </a>
-        </li>
-      
-      <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('reports.*') ? '' : 'collapsed' }}"
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('agreement-reports.*') || request()->routeIs('customer-reports.*') ? '' : 'collapsed' }}"
                     data-bs-target="#reports-nav" data-bs-toggle="collapse" href="#">
-                    <i class="bi bi-graph-up-arrow"></i><span>Reports</span><i class="bi bi-chevron-down ms-auto"></i>
+                    <i class="bi bi-file-earmark-check"></i>
+                    <span>Reports</span>
+                    <i class="bi bi-chevron-down ms-auto"></i>
                 </a>
+
                 <ul id="reports-nav"
-                    class="nav-content collapse {{ request()->routeIs('reports.*') ? 'show' : '' }}"
+                    class="nav-content collapse {{ request()->routeIs('agreement-reports.*') || request()->routeIs('customer-reports.*') ? 'show' : '' }}"
                     data-bs-parent="#sidebar-nav">
+
                     <li>
-                        <a href="{{ route('reports.gst-tr.index') }}"
-                            class="{{ request()->routeIs('reports.gst-tr.*') ? 'active' : '' }}">
-                            <i class="bi bi-circle"></i><span>GST TR Report</span>
+                        <a href="{{ route('agreement-reports.index') }}"
+                            class="{{ request()->routeIs('agreement-reports.*') ? 'active' : '' }}">
+                            <i class="bi bi-circle"></i>
+                            <span>Agreement Reports</span>
                         </a>
                     </li>
+
+                    <li>
+                        <a href="{{ route('customer-reports.index') }}"
+                            class="{{ request()->routeIs('customer-reports.*') ? 'active' : '' }}">
+                            <i class="bi bi-circle"></i>
+                            <span>Customer Reports</span>
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('reports.*') ? '' : 'collapsed' }}"
+                            data-bs-target="#reports-nav" data-bs-toggle="collapse" href="#">
+                            <i class="bi bi-graph-up-arrow"></i><span>Reports</span><i
+                                class="bi bi-chevron-down ms-auto"></i>
+                        </a>
+                        <ul id="reports-nav"
+                            class="nav-content collapse {{ request()->routeIs('reports.*') ? 'show' : '' }}"
+                            data-bs-parent="#sidebar-nav">
+                            <li>
+                                <a href="{{ route('reports.gst-tr.index') }}"
+                                    class="{{ request()->routeIs('reports.gst-tr.*') ? 'active' : '' }}">
+                                    <i class="bi bi-circle"></i><span>GST TR Report</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li><!-- End Reports Nav -->
+
+
                 </ul>
-            </li><!-- End Reports Nav -->
+            </li>
 
-
-    </ul>
-</li>
-
- <li class="nav-item">
+            <li class="nav-item">
                 <a class="nav-link collapsed" href="#"
                     onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                     <i class="bi bi-box-arrow-right"></i>

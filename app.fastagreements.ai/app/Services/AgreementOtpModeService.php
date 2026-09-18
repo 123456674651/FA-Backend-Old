@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Aggriment;
 use App\Models\AgreementPartyVerification;
 use App\Models\Customer;
+use App\Models\User;
 use App\Models\PartyPhoneVerification;
 use App\Services\Auth\PhoneIdentityVerifier;
 use App\Support\MobileNumber;
@@ -190,8 +191,8 @@ class AgreementOtpModeService
      * @return array<int, array{role: string, position: int, mobile: string, name: string}>
      */
     public function requiredForCreation(
-        ?Customer $party1,
-        ?Customer $party2,
+        Customer|User|null $party1,
+        Customer|User|null $party2,
         ?string $guarantorNames,
         ?string $guarantorNumbers,
     ): array {
